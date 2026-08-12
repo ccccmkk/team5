@@ -4,9 +4,9 @@
 
 **Goal:** 체형 유사도 계산·랭킹·사이즈 추천 도메인 로직과 시드 데이터가 든 Supabase DB를 완성한다. 완료 시 `npm test`가 전부 통과하고 DB에 200건 이상의 후기가 적재되어 있다.
 
-**Architecture:** Next.js 단일 앱. `lib/fit-matching`은 DB와 React를 모르는 순수 TS 모듈이라 DB 없이 테스트한다. `lib/db`만 supabase-js를 import한다. 시드는 스크립트로 재현 가능하게 생성한다.
+**Architecture:** Next.js 정적 export(`output: 'export'`)를 GitHub Pages에 올린다. 서버 런타임이 없으므로 브라우저가 Supabase를 직접 호출하고, RLS가 유일한 보안 경계다. `lib/fit-matching`은 DB와 React를 모르는 순수 TS 모듈이라 DB 없이 테스트되고 브라우저에서 그대로 돈다. `lib/db`만 supabase-js를 import한다.
 
-**Tech Stack:** Next.js (App Router) · TypeScript · Tailwind CSS v4 · Vitest · Zod · Supabase (Postgres + Auth)
+**Tech Stack:** Next.js (App Router, static export) · TypeScript · Tailwind CSS v4 · Vitest · Zod · Supabase (Postgres + Auth) · GitHub Pages
 
 **Spec:** [2026-08-12-levis-fit-service-design.md](../specs/2026-08-12-levis-fit-service-design.md)
 
@@ -43,7 +43,9 @@
 | `scripts/seed.ts` | 시드 적재 |
 | `docs/design/brand-guide.md` | 브랜드 가이드 |
 | `lib/design/forbidden.test.ts` | 브랜드 금지 목록을 CI에서 강제 |
+| `next.config.ts` | 정적 export · basePath · trailingSlash |
 | `.github/workflows/ci.yml` | 린트·타입·테스트·빌드 |
+| `.github/workflows/deploy.yml` | GitHub Pages 배포 + 일일 재빌드 |
 
 ---
 
@@ -65,21 +67,57 @@ npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir
 
 `docs/`는 create-next-app이 건드리는 경로가 아니므로 충돌하지 않는다. 프롬프트가 뜨면 Turbopack은 Yes로 둔다.
 
-- [ ] **Step 2: Next.js 메이저 버전 확인**
+- [ ] **Step 2: 정적 export 설정**
 
-```bash
-node -p "require('./package.json').dependencies.next"
+`next.config.ts` 전체를 다음으로 교체한다:
+
+```ts
+import type { NextConfig } from 'next';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+const nextConfig: NextConfig = {
+  // GitHub Pages는 정적 파일만 서빙한다. 서버 컴포넌트의 요청 시점 페칭,
+  // 서버 액션, 미들웨어, 라우트 핸들러를 쓸 수 없다.
+  output: 'export',
+
+  // 프로젝트 페이지(https://<계정>.github.io/team5/)라 하위 경로가 붙는다.
+  // <계정>.github.io 저장소나 커스텀 도메인을 쓰면 이 줄을 지운다.
+  basePath: isProd ? '/team5' : '',
+
+  // Pages가 /models/501 요청에 /models/501/index.html을 주게 한다.
+  // 빼먹으면 새로고침이나 직접 링크에서 404가 난다.
+  trailingSlash: true,
+
+  images: { unoptimized: true },
+};
+
+export default nextConfig;
 ```
 
-**결과를 기록해둔다.** 계획 2에서 세션 갱신 파일 이름이 갈린다 — Next.js 16 이상이면 `proxy.ts`, 15면 `middleware.ts`다.
+- [ ] **Step 3: 정적 산출물이 나오는지 확인**
 
-- [ ] **Step 3: 테스트 도구 설치**
+```bash
+npm run build
+```
+
+Expected: `out/` 디렉토리가 생기고 그 안에 `index.html`이 있다.
+
+```bash
+node -e "console.log(require('fs').existsSync('out/index.html'))"
+```
+
+Expected: `true`
+
+`.gitignore`에 `out/`이 있는지 확인하고 없으면 추가한다. (create-next-app이 `/out/`을 넣어둔다)
+
+- [ ] **Step 4: 테스트 도구 설치**
 
 ```bash
 npm install -D vitest vite-tsconfig-paths
 ```
 
-- [ ] **Step 4: 실패하는 스모크 테스트 작성**
+- [ ] **Step 5: 실패하는 스모크 테스트 작성**
 
 `lib/smoke.test.ts`:
 
@@ -94,7 +132,7 @@ describe('테스트 인프라', () => {
 });
 ```
 
-- [ ] **Step 5: 테스트 실패 확인**
+- [ ] **Step 6: 테스트 실패 확인**
 
 `package.json`의 `scripts`에 추가한다:
 
@@ -127,7 +165,7 @@ npm test
 
 Expected: FAIL — `Cannot find module '@/lib/smoke'`
 
-- [ ] **Step 6: 최소 구현**
+- [ ] **Step 7: 최소 구현**
 
 `lib/smoke.ts`:
 
@@ -137,7 +175,7 @@ export function ok(): boolean {
 }
 ```
 
-- [ ] **Step 7: 테스트 통과 확인**
+- [ ] **Step 8: 테스트 통과 확인**
 
 ```bash
 npm test
@@ -145,11 +183,13 @@ npm test
 
 Expected: PASS (1 passed)
 
-- [ ] **Step 8: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
 git add -A
-git commit -m "chore: Next.js 앱과 Vitest 테스트 인프라 셋업"
+git commit -m "chore: Next.js 정적 export 앱과 Vitest 테스트 인프라 셋업
+
+GitHub Pages 배포를 전제로 output: 'export' + trailingSlash를 건다."
 ```
 
 ---
@@ -1720,8 +1760,10 @@ export default defineConfig(({ mode }) => ({
 - [ ] **Step 3: supabase-js 설치와 실패하는 RLS 테스트 작성**
 
 ```bash
-npm install @supabase/supabase-js @supabase/ssr
+npm install @supabase/supabase-js
 ```
+
+`@supabase/ssr`은 설치하지 않는다. 서버 런타임이 없어 쿠키 기반 세션을 쓸 일이 없다.
 
 `lib/db/rls.test.ts`:
 
@@ -2064,48 +2106,64 @@ Expected: PASS (3 passed)
 `lib/db/client.ts`:
 
 ```ts
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
-/** 서버 컴포넌트·서버 액션에서 쓰는 클라이언트. RLS가 적용된다. */
-export async function createClient() {
-  const cookieStore = await cookies();
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // 서버 컴포넌트에서 호출된 경우. 세션 갱신은 proxy/middleware가 담당한다.
-          }
-        },
+let browserClient: SupabaseClient | null = null;
+
+/**
+ * 브라우저용 싱글턴. 세션을 localStorage에 유지하고 자동 갱신한다.
+ *
+ * publishable key는 브라우저에 노출되는 것을 전제로 설계된 키다.
+ * 이 키로 할 수 있는 일의 범위는 RLS 정책이 결정한다.
+ * service_role key는 절대 이쪽으로 들어오면 안 된다.
+ */
+export function getBrowserClient(): SupabaseClient {
+  if (!browserClient) {
+    browserClient = createSupabaseClient(url, publishableKey, {
+      auth: {
+        flowType: 'pkce',
+        persistSession: true,
+        autoRefreshToken: true,
+        // OAuth 콜백 URL의 코드를 자동으로 세션으로 교환한다.
+        // 정적 호스팅이라 라우트 핸들러를 못 쓰므로 이 옵션이 콜백 처리를 대신한다.
+        detectSessionInUrl: true,
       },
-    },
-  );
+    });
+  }
+  return browserClient;
+}
+
+/** 빌드 시점 프리렌더용. 세션이 필요 없고 localStorage도 없다. */
+export function createBuildClient(): SupabaseClient {
+  return createSupabaseClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 ```
 
 `lib/db/reviews.ts`:
 
 ```ts
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FitReview } from '@/lib/fit-matching';
-import { createClient } from './client';
+import { getBrowserClient } from './client';
 import { toFitReview, type FitReviewRow } from './mappers';
 
 const REVIEW_COLUMNS =
   'id, model_id, purchased_size, waist_fit, thigh_fit, hip_fit, length_fit, overall, comment, is_seed, created_at, snapshot';
 
-export async function getReviews(modelId: string): Promise<FitReview[]> {
-  const supabase = await createClient();
+/**
+ * 모델의 후기 전체를 최신순으로 읽는다.
+ * client를 넘기면 빌드 시점 프리렌더에서도 같은 함수를 쓸 수 있다.
+ */
+export async function getReviews(
+  modelId: string,
+  client?: SupabaseClient,
+): Promise<FitReview[]> {
+  const supabase = client ?? getBrowserClient();
   const { data, error } = await supabase
     .from('fit_reviews')
     .select(REVIEW_COLUMNS)
@@ -2120,14 +2178,15 @@ export async function getReviews(modelId: string): Promise<FitReview[]> {
 `lib/db/profile.ts`:
 
 ```ts
-import { createClient } from './client';
+import { getBrowserClient } from './client';
 import { toBodyProfile, toProfileRow, type BodyProfile, type BodyProfileRow } from './mappers';
 
 const PROFILE_COLUMNS =
   'user_id, nickname, height_cm, weight_kg, waist_inch, thigh_cm, hip_cm, inseam_cm';
 
+/** 브라우저 전용. 빌드 시점에는 로그인한 사용자가 없다. */
 export async function getMyProfile(): Promise<BodyProfile | null> {
-  const supabase = await createClient();
+  const supabase = getBrowserClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -2144,7 +2203,7 @@ export async function getMyProfile(): Promise<BodyProfile | null> {
 }
 
 export async function upsertMyProfile(profile: BodyProfile): Promise<void> {
-  const supabase = await createClient();
+  const supabase = getBrowserClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -2172,7 +2231,7 @@ export async function upsertMyProfile(profile: BodyProfile): Promise<void> {
         {
           patterns: [
             {
-              group: ['@supabase/supabase-js', '@supabase/ssr'],
+              group: ['@supabase/supabase-js'],
               message: 'Supabase 접근은 lib/db 안에서만 합니다 (스펙 §5 불변 규칙 2).',
             },
           ],
@@ -2732,12 +2791,13 @@ git commit -m "feat: 시드 적재 스크립트와 실제 후기 CSV 틀 추가
 
 ---
 
-## Task 13: GitHub 저장소와 CI
+## Task 13: GitHub 저장소 · CI · Pages 배포
 
-스펙 §9의 CI 파이프라인을 건다. 단위 테스트는 DB를 안 쓰므로 몇 초 만에 끝나야 한다 — 팀 프로젝트에서 CI가 느리면 아무도 안 기다린다.
+스펙 §9의 파이프라인을 건다. 단위 테스트는 DB를 안 쓰므로 몇 초 만에 끝나야 한다 — 팀 프로젝트에서 CI가 느리면 아무도 안 기다린다.
 
 **Files:**
 - Create: `.github/workflows/ci.yml`
+- Create: `.github/workflows/deploy.yml`
 - Modify: `package.json`
 
 - [ ] **Step 1: 테스트 스크립트를 빠른 것과 느린 것으로 분리**
@@ -2806,9 +2866,10 @@ jobs:
       - run: npm run test:unit
       - run: npm run build
         env:
-          # 빌드 시점에는 DB에 접근하지 않는다. 형식만 맞으면 된다.
-          NEXT_PUBLIC_SUPABASE_URL: https://build-only.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-only
+          # 계획 2에서 모델 페이지를 빌드 시점에 프리렌더하므로 실제 값이 필요하다.
+          # service_role은 절대 넣지 않는다.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
   db:
     name: RLS 정책 테스트
@@ -2828,25 +2889,99 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 ```
 
-- [ ] **Step 6: 커밋과 푸시**
+- [ ] **Step 6: GitHub Pages 활성화 (사람이 직접)**
+
+저장소 > Settings > Pages > Build and deployment > Source를 **GitHub Actions**로 바꾼다.
+
+`Deploy from a branch`를 고르면 `gh-pages` 브랜치에 산출물을 커밋해야 하고, `out/`을 저장소에 넣게 되어 diff가 지저분해진다. Actions 방식은 산출물을 커밋하지 않는다.
+
+- [ ] **Step 7: 배포 워크플로 작성**
+
+`.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # 프리렌더된 HTML은 빌드 시점의 후기만 담는다.
+  # 새 후기가 검색에 노출되려면 재빌드가 필요하다 (스펙 §9).
+  schedule:
+    - cron: '0 18 * * *' # 매일 03:00 KST
+  workflow_dispatch: # 데모 직전에 수동으로 한 번 돌린다
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Jekyll 비활성화
+        # Jekyll은 언더스코어로 시작하는 디렉토리를 무시한다. _next가 통째로 사라진다.
+        run: touch out/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+`SUPABASE_SERVICE_ROLE_KEY`는 이 워크플로에 넣지 않는다. 빌드 산출물은 공개되므로 RLS를 우회하는 키가 번들에 섞이면 안 된다.
+
+- [ ] **Step 8: 커밋과 푸시**
 
 ```bash
 git add -A
-git commit -m "ci: 린트·타입·단위 테스트·빌드 워크플로 추가
+git commit -m "ci: CI 워크플로와 GitHub Pages 배포 워크플로 추가
 
-RLS 테스트는 시크릿이 필요하고 느리므로 PR에서만 별도 잡으로 돌린다."
+RLS 테스트는 시크릿이 필요하고 느리므로 PR에서만 별도 잡으로 돌린다.
+배포는 main push와 일일 스케줄로 재빌드해 프리렌더 내용을 갱신한다."
 git push
 ```
 
-- [ ] **Step 7: CI 통과 확인**
+- [ ] **Step 9: CI와 배포 통과 확인**
 
 ```bash
 gh run watch
 ```
 
-`gh`가 없으면 GitHub 저장소의 Actions 탭에서 `check` 잡이 초록인지 확인한다.
+`gh`가 없으면 GitHub 저장소의 Actions 탭에서 확인한다.
 
-Expected: `check` 잡 성공. 실패하면 로그의 실패한 스텝을 로컬에서 같은 명령으로 재현해 고친다.
+Expected: `check` 잡과 `Deploy to GitHub Pages`가 모두 초록. 실패하면 로그의 실패한 스텝을 로컬에서 같은 명령으로 재현해 고친다.
+
+- [ ] **Step 10: 배포된 사이트 확인**
+
+브라우저로 `https://<계정>.github.io/team5/`를 연다.
+
+Expected: Task 2에서 만든 "리바이스 501·517 핏 데이터" 페이지가 보인다.
+
+CSS가 깨져 보이면 `next.config.ts`의 `basePath`가 저장소 이름과 다른 것이다. 저장소 이름이 `team5`가 아니면 그 값으로 고친다.
 
 ---
 
@@ -2858,9 +2993,15 @@ Expected: `check` 잡 성공. 실패하면 로그의 실패한 스텝을 로컬�
 - [ ] `npm run build` 성공
 - [ ] Supabase `fit_reviews`에 250건 이상 적재
 - [ ] `scripts/inspect.ts` 출력의 상위 유사 후기가 눈으로 봐도 납득 가능
-- [ ] GitHub Actions `check` 잡 초록
+- [ ] GitHub Actions `check` 잡과 배포 워크플로 초록
 - [ ] `npm run test:unit`이 네트워크 없이 몇 초 안에 끝남
+- [ ] `https://<계정>.github.io/team5/`가 열리고 CSS가 정상
 
 ## 다음 계획
 
-계획 2 — 인증(Supabase OAuth), 시그니처 컴포넌트(`MeasureBar`·`FitScale`·`SimilarityBadge`), `/onboarding`·`/models/[id]`·`/reviews/new` 화면, Vercel 배포.
+계획 2 — Supabase OAuth(PKCE, 정적 `/auth/callback` 페이지), 시그니처 컴포넌트(`MeasureBar`·`FitScale`·`SimilarityBadge`), `/onboarding`·`/models/[id]`·`/reviews/new` 화면.
+
+정적 export라 계획 2에서 유의할 점:
+- 모델 상세는 `generateStaticParams` + 빌드 시점 `createBuildClient()`로 후기를 프리렌더한다 (SEO). 하이드레이션 후 브라우저가 최신 데이터로 덮는다.
+- 로그인 상태에 따라 갈리는 UI는 클라이언트에서만 결정된다. 첫 페인트 깜빡임을 막으려면 로그아웃 상태를 기본 마크업으로 두고 그 위를 덮는다.
+- 후기 저장은 서버 액션이 아니라 클라이언트에서 `supabase.from(...).insert()`로 한다. 최종 방어선은 DB `CHECK` 제약과 RLS다.

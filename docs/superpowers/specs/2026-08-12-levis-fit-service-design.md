@@ -50,10 +50,16 @@
 | DB / 인증 | Supabase (Postgres + Auth OAuth) |
 | 검증 | Zod (클라이언트·서버 공용 스키마) |
 | 테스트 | Vitest (단위·통합), Playwright (E2E 1개) |
-| 배포 | Vercel (PR 프리뷰 + main 프로덕션) |
+| 배포 | **GitHub Pages** (Next.js `output: 'export'`, GitHub Actions로 배포) |
 | CI | GitHub Actions |
 
-별도 백엔드 서버 없음. Next.js 서버 컴포넌트·서버 액션이 Supabase에 직접 연결하고 보안은 RLS로 강제한다.
+별도 백엔드 서버 없음. GitHub Pages는 정적 파일만 서빙하므로 **서버 컴포넌트의 요청 시점 데이터 페칭·서버 액션·미들웨어를 쓰지 않는다.** 데이터는 빌드 시점에 프리렌더하고, 런타임에는 브라우저가 `supabase-js`로 직접 읽고 쓴다.
+
+### 3.1 키 취급
+
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`(구 anon key)는 **브라우저에 노출되는 것을 전제로 설계된 키**다. 이 키만으로 할 수 있는 일의 범위를 RLS(§6.4)가 결정하며, 그것이 이 구조의 유일한 보안 경계다.
+
+`SUPABASE_SERVICE_ROLE_KEY`는 RLS를 우회한다. **시드 스크립트에서만 쓰고, 클라이언트 번들·저장소·`NEXT_PUBLIC_` 접두사 어디에도 들어가면 안 된다.** 로컬은 `.env.local`, CI는 저장소 시크릿으로만 공급한다.
 
 ---
 
@@ -61,39 +67,61 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Next.js (App Router · TypeScript)          배포: Vercel      │
+│  GitHub Pages (정적 파일)                                      │
+│  Next.js  output: 'export' · basePath: '/team5'               │
 │                                                               │
-│  app/          라우트 · 서버 컴포넌트 · 서버 액션               │
-│  components/   UI (Tailwind + shadcn/ui)                      │
+│  빌드 시점 │ Supabase에서 후기를 읽어 모델 페이지를 HTML로 프리렌더 │
+│  런타임    │ 브라우저가 supabase-js로 최신 데이터·인증·쓰기 처리   │
+│                                                               │
+│  app/          라우트 · 정적 페이지                             │
+│  components/   UI (Tailwind)                                  │
 │  lib/                                                         │
 │    sizing/       리바이스 모델·공식 사이즈표 (정적 데이터)       │
-│    fit-matching/ 유사도 계산 · 랭킹 · 사이즈 집계  ← 순수 TS    │
-│    validation/   Zod 스키마 (클라·서버 공용)                    │
+│    fit-matching/ 유사도 계산 · 랭킹 · 집계  ← 순수 TS, 브라우저 실행 │
+│    validation/   Zod 스키마                                    │
 │    db/           Supabase 쿼리  ← 유일한 DB 접점               │
 └──────────────────────────┬───────────────────────────────────┘
-                           │ supabase-js (RLS 적용)
+                           │ supabase-js (publishable key + RLS)
 ┌──────────────────────────▼───────────────────────────────────┐
 │  Supabase                                                     │
 │   Postgres : jean_models · body_profiles · fit_reviews        │
-│   Auth     : Google / Kakao OAuth                             │
-│   RLS      : 후기 읽기 공개, 프로필은 본인만, 쓰기는 본인 행만   │
+│   Auth     : Google / Kakao OAuth (PKCE)                      │
+│   RLS      : 유일한 보안 경계                                   │
 └───────────────────────────────────────────────────────────────┘
 ```
 
-### 4.1 조회 흐름
+`lib/fit-matching`이 순수 TS라 정적 export로 옮겨도 그대로 브라우저에서 돈다. 정적 호스팅 전환에서 실제로 바뀌는 모듈은 `lib/db` 하나다 — §5의 모듈 경계가 값을 하는 지점이다.
 
-1. 사용자가 `/models/501` 진입
-2. 서버 컴포넌트가 `db.getMyProfile()` + `db.getReviews('501')` 호출
-3. `fitMatching.rankReviews(내프로필, 후기목록)` → 각 후기에 유사도 점수를 붙여 정렬
-4. `fitMatching.recommendSize(랭킹결과)` → 추천 사이즈와 부위별 이슈 집계
-5. 렌더링: 추천 사이즈 카드 → 부위별 핏 분포 → 유사도 순 후기 리스트
+### 4.1 정적 호스팅 제약
 
-### 4.2 작성 흐름
+| 안 쓰는 것 | 대체 |
+|---|---|
+| 서버 컴포넌트의 요청 시점 페칭 | 빌드 시점 프리렌더 + 브라우저 페칭 |
+| 서버 액션 | 클라이언트에서 `supabase-js` 직접 호출 (RLS가 방어) |
+| 미들웨어 / `proxy.ts` | 세션은 브라우저 클라이언트가 자체 갱신 |
+| 라우트 핸들러(OAuth 콜백) | 정적 `/auth/callback` 페이지 + PKCE 자동 처리 |
+| `next/image` 최적화 | `images: { unoptimized: true }` |
+
+추가 설정: `trailingSlash: true` (Pages가 `/models/501/index.html`을 찾게), 산출물 루트에 `.nojekyll` (Jekyll이 `_next`를 무시하지 않게), 프로젝트 페이지면 `basePath: '/team5'`.
+
+### 4.2 조회 흐름
+
+1. 사용자가 `/models/501/` 진입 → 빌드 시점에 프리렌더된 HTML이 즉시 보인다 (후기 본문 포함 → SEO)
+2. 하이드레이션 후 브라우저가 `db.getMyProfile()` + `db.getReviews('501')`로 최신 데이터를 받는다
+3. `fitMatching.rankReviews(내프로필, 후기목록)` → 유사도 점수를 붙여 정렬
+4. `fitMatching.recommendSize(랭킹결과, 내프로필)` → 추천 사이즈와 부위별 이슈
+5. 렌더: 추천 사이즈 카드 → 부위별 핏 분포 → 유사도 순 후기 리스트
+
+프로필이 없는 방문자에게는 1번의 프리렌더 결과(최신순 정렬)가 그대로 보인다. 로그인·프로필이 있으면 2~5번이 그 위를 덮는다.
+
+### 4.3 작성 흐름
 
 1. 로그인 → 프로필 없으면 `/onboarding`으로 유도
 2. `/reviews/new` 폼 제출
-3. 서버 액션에서 Zod 검증 → 현재 프로필을 `snapshot`으로 복사 → insert
-4. `revalidatePath('/models/[id]')`로 캐시 무효화
+3. **클라이언트에서** Zod 검증 → 현재 프로필을 `snapshot`으로 복사 → `supabase.from('fit_reviews').insert()`
+4. 성공 시 로컬 상태를 갱신하고 모델 페이지로 이동
+
+서버가 없으므로 검증의 최종 방어선은 **DB의 `CHECK` 제약과 RLS 정책**이다(§6). Zod는 UX를 위한 1차 검증이며, 신뢰 경계가 아니다. 이 때문에 §6의 `CHECK` 제약은 선택이 아니라 필수다.
 
 ---
 
@@ -104,7 +132,7 @@
 | `lib/sizing` | 리바이스 모델 목록·공식 사이즈표 조회 | 없음 (정적 상수) | 순수 단위 |
 | `lib/fit-matching` | 체형 유사도, 후기 랭킹, 사이즈 추천 집계 | `sizing`의 **타입만** | 순수 단위 (DB 불필요) |
 | `lib/validation` | 프로필·후기 입력 Zod 스키마 | 없음 | 순수 단위 |
-| `lib/db` | Supabase 쿼리 전부 | supabase-js | 통합 (로컬 Supabase) |
+| `lib/db` | Supabase 쿼리 전부 (브라우저 클라이언트 + 빌드 시점 조회) | supabase-js | 통합 (dev 프로젝트) |
 | `lib/analytics` | GA4 이벤트 전송 (§15에 정의된 이벤트만) | gtag | 단위 (전송 함수 모킹) |
 
 **불변 규칙**
@@ -366,22 +394,21 @@ CSV는 저장소에 커밋하되 **개인 식별 정보는 넣지 않고** 닉�
 ## 9. CI/CD 파이프라인
 
 ```
-로컬                 push / PR (GitHub Actions)          배포 (Vercel)
-────                 ──────────────────────────          ─────────────
-supabase start   →   lint · typecheck                →   PR    → Preview URL
-pnpm dev             unit test (vitest, DB 없음)          main  → Production
-pnpm test:watch      build
-                     ─────────────────────────
-                     [PR 전용] 통합 테스트
-                     supabase CLI 기동 → 마이그레이션 → lib/db + RLS 테스트
-                     [PR 전용] E2E 1개 (Playwright)
+로컬                 PR (GitHub Actions)                main push · 스케줄
+────                 ───────────────────                ──────────────────
+npm run dev      →   lint · typecheck               →   build (Supabase 조회 포함)
+npm run test:watch   test:unit (DB 없음, 수 초)             ↓
+                     build                                 actions/deploy-pages
+                     ───────────────────                   ↓
+                     test:db (RLS 정책, 시크릿 필요)          GitHub Pages
 ```
 
 - **단위 테스트가 DB를 안 쓴다.** `fit-matching`·`sizing`·`validation`이 순수 함수라 CI가 수 초 만에 끝난다. 팀 프로젝트에서 CI가 느리면 아무도 안 기다리고, 안 기다리면 CI가 없는 것과 같다.
-- **RLS 정책 자체를 테스트한다.** "A 계정이 B의 체형 프로필을 못 읽는다", "남의 후기를 수정 못 한다"를 테스트로 박아둔다. 민감 정보를 다루는 이상 선택이 아니다.
-- PR마다 프리뷰 URL이 생기니 팀원이 코드를 받지 않고 리뷰할 수 있고, 데모 리허설도 프리뷰에서 돌린다.
+- **RLS 정책 자체를 테스트한다.** "A 계정이 B의 체형 프로필을 못 읽는다", "남의 후기를 수정 못 한다"를 테스트로 박아둔다. 정적 호스팅에서는 RLS가 **유일한** 보안 경계라 더더욱 필수다.
+- **정기 재빌드.** 프리렌더된 HTML은 빌드 시점의 후기만 담는다. 새 후기가 검색에 노출되려면 재빌드가 필요하므로 `schedule`(하루 1회)과 `workflow_dispatch`(수동)를 함께 건다. 데모 직전에는 수동으로 한 번 돌린다.
+- **PR에서는 배포하지 않는다.** GitHub Pages는 환경이 하나뿐이라 프리뷰 URL이 없다. 화면 확인은 로컬 `npm run dev`로 한다.
 
-환경은 Supabase 무료 프로젝트 2개(dev / prod).
+환경은 Supabase 무료 프로젝트 1개(dev). Pages 환경이 하나이므로 prod를 따로 두지 않고, 시드와 실사용자 데이터는 `is_seed`로 구분해 함께 둔다.
 
 ---
 
@@ -403,7 +430,7 @@ pnpm test:watch      build
 
 ### 11.1 입력 검증
 
-Zod 스키마 하나를 클라이언트와 서버 액션이 공유한다. 클라이언트 검증은 UX용이고 **서버 액션 검증이 진짜 방어선**이다. 신체 치수 범위 제약은 Zod와 DB `CHECK`로 이중화한다 — 오타 하나가 유사도 계산 전체를 오염시킨다.
+서버가 없으므로 Zod는 **UX를 위한 1차 검증일 뿐 신뢰 경계가 아니다.** 브라우저에서 도는 코드는 사용자가 우회할 수 있다. 진짜 방어선은 **DB의 `CHECK` 제약과 RLS 정책**이며, 신체 치수 범위는 Zod와 `CHECK` 양쪽에 동일하게 건다. 오타 하나가 유사도 계산 전체를 오염시키므로 DB 쪽 제약은 선택이 아니다.
 
 ### 11.2 빈 결과 (가장 흔한 에러 상태)
 
@@ -419,7 +446,8 @@ Zod 스키마 하나를 클라이언트와 서버 액션이 공유한다. 클라
 ### 11.3 시스템 오류
 
 - Supabase 장애·네트워크 오류 → `error.tsx` 라우트 에러 바운더리 + 재시도 버튼
-- 서버 액션 실패 → 입력값을 폼에 보존한 채 되돌린다. 체형 6개를 다시 입력하게 만들면 그 사용자는 돌아오지 않는다.
+- insert/upsert 실패 → 입력값을 폼 상태에 보존한 채 오류만 표시한다. 체형 6개를 다시 입력하게 만들면 그 사용자는 돌아오지 않는다.
+- 브라우저에서 직접 호출하므로 네트워크 실패가 서버 환경보다 잦다. 모든 쓰기 동작에 로딩 상태와 재시도 경로를 둔다.
 
 ---
 
@@ -465,6 +493,9 @@ E2E는 하나만 둔다. 팀 프로젝트에서 E2E를 늘리면 관리 비용�
 | 결정 | 선택 | 버린 안과 이유 |
 |---|---|---|
 | 백엔드 구조 | 단일 Next.js 앱 + Supabase 직결 | 별도 API 서버 — 2~6주 데모에 배포 2벌·CORS 비용만 늘어남 |
+| 배포 | GitHub Pages + Actions (팀 결정) | Vercel — 서버 런타임을 쓸 수 있었으나 팀이 Pages로 정함 |
+| 렌더링 | 정적 export + 빌드 시점 프리렌더 | 전량 클라이언트 렌더 — 크롤러에 빈 페이지로 보여 §16이 무의미해짐 |
+| 쓰기 경로 | 브라우저 → Supabase 직접 (RLS 방어) | 서버 액션 — 정적 호스팅에서 사용 불가 |
 | 유사도 계산 위치 | 앱 내 순수 TS 모듈 | Postgres RPC — 로직이 마이그레이션에 갇혀 테스트가 무거워짐 |
 | 매칭 방식 | 정규화 가중 거리 → 점수 정렬 | 범위 필터 — 데이터가 적으면 결과 0건이 뜸 / 체형 타입 버킷 — 기준에 근거가 없음 |
 | 요약 방식 | 구조화된 집계 (LLM 없음) | LLM 요약 — 작업량·비용 대비 MVP 검증에 불필요 |
@@ -514,11 +545,16 @@ H1·H2는 §13에 적은 핵심 리스크("사람들이 몸 정보를 입력해�
 
 ## 16. SEO와 검색 노출
 
-- **메타데이터** — Next.js `metadata` API로 페이지별 title/description/OG 이미지. 모델 상세는 `generateMetadata`로 동적 생성.
-- **사이트맵·로봇** — `app/sitemap.ts`, `app/robots.ts`. 정적 페이지 + 모델 2개를 동적으로 채운다.
-- **구조화 데이터** — 모델 상세에 `Product` + `AggregateRating` JSON-LD. 검색 결과에 별점이 붙을 수 있다.
-- **구글 서치 콘솔** — Vercel 배포 URL로 소유권 확인(메타 태그 방식) 후 사이트맵 제출.
-- **타겟 검색어** — "501 사이즈", "517 사이즈 추천", "청바지 허벅지 꽉 낌" 같은 롱테일. 이 문구가 실제 페이지 본문에 자연스럽게 존재해야 한다.
+정적 export에서 SEO의 관건은 **후기 본문이 빌드 산출물 HTML 안에 실제로 들어 있는가**다. 전부 클라이언트에서 그리면 크롤러에게는 빈 페이지로 보인다.
+
+- **빌드 시점 프리렌더** — 모델 상세 페이지를 `generateStaticParams`로 만들고, 빌드 중에 `service_role` 없이 publishable key로 후기를 읽어 HTML에 박는다. 하이드레이션 후 브라우저가 최신 데이터로 덮는다. 이 구조라야 롱테일 검색어가 실제 본문에 존재한다.
+- **메타데이터** — 페이지별 title/description/OG. 모델 상세는 `generateMetadata`(빌드 시점 실행).
+- **사이트맵·로봇** — `app/sitemap.ts`, `app/robots.ts`. 정적 export에서도 파일로 출력된다. `basePath`를 포함한 절대 URL로 채운다.
+- **구조화 데이터** — 모델 상세에 `Product` + `AggregateRating` JSON-LD.
+- **구글 서치 콘솔** — GitHub Pages URL(`https://<계정>.github.io/team5/`)로 소유권 확인(메타 태그 방식) 후 사이트맵 제출.
+- **타겟 검색어** — "501 사이즈", "517 사이즈 추천", "청바지 허벅지 꽉 낌" 같은 롱테일. 이 문구가 프리렌더된 본문에 자연스럽게 존재해야 한다.
+
+정적 페이지라 새 후기는 재빌드 전까지 검색에 안 잡힌다. §9의 일일 스케줄 재빌드가 이를 메운다.
 
 ---
 
@@ -586,7 +622,7 @@ H1·H2는 §13에 적은 핵심 리스크("사람들이 몸 정보를 입력해�
 |---|---|
 | 1. 문제 정의 | §1 (완료) |
 | 2. MVP 제작 | §4~7, §10~12, §17 |
-| 3. GitHub + Vercel 배포 | §9 |
+| 3. GitHub + 배포 | §9 (Vercel 대신 GitHub Pages) |
 | 4. Supabase DB 연동 | §6 |
 | 5. GA 데이터 측정 + KPI | §15 |
 | 6. 서치 콘솔 검색 노출 | §16 |
