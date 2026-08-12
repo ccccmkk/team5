@@ -13,7 +13,8 @@
     "test:unit": "vitest run --exclude \"**/rls.test.ts\"",
     "test:db": "vitest run lib/db/rls.test.ts",
     "seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
-    "seed:reset": "dotenv -e .env.local -- tsx scripts/seed.ts --reset"
+    "seed:reset": "dotenv -e .env.local -- tsx scripts/seed.ts --reset",
+    "seed:sql": "tsx scripts/seed.ts --sql --reset"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
