@@ -1692,15 +1692,9 @@ create policy reviews_own_delete on fit_reviews
   for delete using (auth.uid() = user_id);
 ```
 
-- [ ] **Step 2: 마이그레이션 적용**
+**아직 적용하지 않는다.** RLS가 꺼진 상태에서 테스트가 먼저 실패하는 것을 봐야 정책이 실제로 동작해서 통과한 것인지 알 수 있다.
 
-```bash
-npx supabase db push
-```
-
-Expected: `Finished supabase db push.`
-
-- [ ] **Step 3: 테스트 설정에 환경변수 로딩 추가**
+- [ ] **Step 2: 테스트 설정에 환경변수 로딩 추가**
 
 `vitest.config.ts`를 다음으로 교체한다:
 
@@ -1721,7 +1715,11 @@ export default defineConfig(({ mode }) => ({
 }));
 ```
 
-- [ ] **Step 4: 실패하는 RLS 테스트 작성**
+- [ ] **Step 3: supabase-js 설치와 실패하는 RLS 테스트 작성**
+
+```bash
+npm install @supabase/supabase-js @supabase/ssr
+```
 
 `lib/db/rls.test.ts`:
 
@@ -1766,6 +1764,18 @@ describe('RLS 정책', () => {
   beforeAll(async () => {
     alice = await createTestUser('alice');
     bob = await createTestUser('bob');
+
+    // fit_reviews의 외래키 때문에 모델 행이 먼저 있어야 한다
+    const { MODELS } = await import('@/data/models');
+    await admin.from('jean_models').upsert(
+      MODELS.map((m) => ({
+        id: m.id,
+        name: m.name,
+        fit_type: m.fitType,
+        description: m.description,
+        size_chart: m.sizeChart,
+      })),
+    );
 
     const { error } = await alice.client.from('body_profiles').insert({
       user_id: alice.id,
@@ -1831,33 +1841,27 @@ describe('RLS 정책', () => {
 });
 ```
 
-- [ ] **Step 5: supabase-js 설치 후 테스트 실패 확인**
+- [ ] **Step 4: RLS 없이 테스트 실패 확인**
 
 ```bash
-npm install @supabase/supabase-js @supabase/ssr
 npm test -- rls
 ```
 
-Expected: FAIL — `insert or update on table "fit_reviews" violates foreign key constraint` (아직 `jean_models`에 501이 없다)
+Expected: FAIL — 최소 두 개가 깨진다.
+- `남의 체형 프로필은 읽히지 않는다`: RLS가 꺼져 있어 bob이 alice의 프로필을 읽는다
+- `is_seed를 켜서 후기를 넣을 수 없다`: 제약이 없어 insert가 성공한다
 
-- [ ] **Step 6: 모델 행을 먼저 넣는다**
+**이 실패를 눈으로 확인하는 것이 이 Task의 핵심이다.** 마이그레이션을 먼저 적용하면 테스트가 통과해도 정책 덕분인지 알 수 없다.
 
-`lib/db/rls.test.ts`의 `beforeAll` 안, 사용자 생성 다음 줄에 추가한다:
+- [ ] **Step 5: 마이그레이션 적용**
 
-```ts
-    const { MODELS } = await import('@/data/models');
-    await admin.from('jean_models').upsert(
-      MODELS.map((m) => ({
-        id: m.id,
-        name: m.name,
-        fit_type: m.fitType,
-        description: m.description,
-        size_chart: m.sizeChart,
-      })),
-    );
+```bash
+npx supabase db push
 ```
 
-- [ ] **Step 7: 테스트 통과 확인**
+Expected: `Finished supabase db push.`
+
+- [ ] **Step 6: 테스트 통과 확인**
 
 ```bash
 npm test -- rls
@@ -1865,7 +1869,7 @@ npm test -- rls
 
 Expected: PASS (4 passed)
 
-- [ ] **Step 8: 커밋**
+- [ ] **Step 7: 커밋**
 
 ```bash
 git add -A
