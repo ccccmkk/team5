@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # RLS 잡을 PR 없이도 돌려볼 수 있게 열어둔다
+  workflow_dispatch:
 
 jobs:
   check:
@@ -28,7 +30,8 @@ jobs:
   db:
     name: RLS 정책 테스트
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # 느리고 시크릿이 필요하므로 main push마다 돌리지는 않는다
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
