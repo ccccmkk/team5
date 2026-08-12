@@ -5,6 +5,9 @@ import {
   type BodyProfile,
   type BodyProfileRow,
 } from "./mappers";
+import { ensureSession } from "./session";
+
+export type { BodyProfile } from "./mappers";
 
 const PROFILE_COLUMNS =
   "user_id, nickname, height_cm, weight_kg, waist_inch, thigh_cm, hip_cm, inseam_cm";
@@ -27,12 +30,10 @@ export async function getMyProfile(): Promise<BodyProfile | null> {
   return data ? toBodyProfile(data as BodyProfileRow) : null;
 }
 
+/** 저장 시점에 익명 세션을 확보한다. 사용자는 로그인 화면을 보지 않는다. */
 export async function upsertMyProfile(profile: BodyProfile): Promise<void> {
   const supabase = getBrowserClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("로그인이 필요합니다");
+  const user = await ensureSession();
 
   const { error } = await supabase.from("body_profiles").upsert({
     ...toProfileRow(user.id, profile),
