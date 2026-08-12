@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #14161a;
+  --color-ink-muted: #6b7280;
+  --color-line: #e4e4e7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f7f8;
+  --color-accent: #c8ff00;
+  --color-warn: #e8590c;
+
+  --font-sans: var(--font-sans-kr), sans-serif;
+  --font-mono: var(--font-mono-num), monospace;
+
+  --radius-sm: 4px;
+}
+
+/* 수치는 항상 자릿수가 고정되어야 계측기로 보인다 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

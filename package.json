@@ -1,0 +1,38 @@
+{
+  "name": "team5",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --exclude \"**/rls.test.ts\"",
+    "test:db": "vitest run lib/db/rls.test.ts",
+    "seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
+    "seed:reset": "dotenv -e .env.local -- tsx scripts/seed.ts --reset"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}

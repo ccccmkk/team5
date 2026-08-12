@@ -580,8 +580,8 @@ H1·H2는 §13에 적은 핵심 리스크("사람들이 몸 정보를 입력해�
 
 ### 17.2 타이포그래피
 
-- 본문·UI: **Pretendard Variable** (자체 호스팅). 시스템 폰트와 Inter는 쓰지 않는다 — 가장 흔한 AI 티다.
-- 수치: **IBM Plex Mono**, `font-variant-numeric: tabular-nums` 필수. 숫자 자릿수가 흔들리면 계측기로 안 보인다.
+- 본문·UI: **IBM Plex Sans KR** (`next/font/google`로 자체 호스팅). 시스템 폰트와 Inter는 쓰지 않는다 — 가장 흔한 AI 티다. Pretendard는 국내 프로젝트에 워낙 흔해 변별력이 낮아 쓰지 않는다.
+- 수치: **IBM Plex Mono**, `font-variant-numeric: tabular-nums` 필수. 숫자 자릿수가 흔들리면 계측기로 안 보인다. 본문과 같은 패밀리라 리듬이 맞는다.
 - 헤드라인: 본문과 같은 폰트, weight 700, `letter-spacing: -0.02em`.
 
 ### 17.3 형태 규칙
