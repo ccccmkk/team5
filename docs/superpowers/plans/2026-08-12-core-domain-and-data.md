@@ -42,6 +42,8 @@
 | `scripts/generate-synthetic.ts` | 합성 후기 생성 |
 | `scripts/seed.ts` | 시드 적재 |
 | `docs/design/brand-guide.md` | 브랜드 가이드 |
+| `lib/design/forbidden.test.ts` | 브랜드 금지 목록을 CI에서 강제 |
+| `.github/workflows/ci.yml` | 린트·타입·테스트·빌드 |
 
 ---
 
@@ -2730,6 +2732,124 @@ git commit -m "feat: 시드 적재 스크립트와 실제 후기 CSV 틀 추가
 
 ---
 
+## Task 13: GitHub 저장소와 CI
+
+스펙 §9의 CI 파이프라인을 건다. 단위 테스트는 DB를 안 쓰므로 몇 초 만에 끝나야 한다 — 팀 프로젝트에서 CI가 느리면 아무도 안 기다린다.
+
+**Files:**
+- Create: `.github/workflows/ci.yml`
+- Modify: `package.json`
+
+- [ ] **Step 1: 테스트 스크립트를 빠른 것과 느린 것으로 분리**
+
+`package.json`의 `scripts`에 추가한다:
+
+```json
+"test:unit": "vitest run --exclude \"**/rls.test.ts\"",
+"test:db": "vitest run lib/db/rls.test.ts"
+```
+
+- [ ] **Step 2: 분리가 동작하는지 확인**
+
+```bash
+npm run test:unit
+```
+
+Expected: PASS. 출력에 `rls.test.ts`가 **없어야** 한다. 네트워크 없이 몇 초 안에 끝나야 한다.
+
+- [ ] **Step 3: GitHub 저장소 생성과 푸시**
+
+```bash
+gh repo create team5 --private --source=. --remote=origin --push
+```
+
+`gh`가 없으면 https://github.com/new 에서 빈 저장소를 만든 뒤:
+
+```bash
+git remote add origin https://github.com/<계정>/team5.git
+git push -u origin main
+```
+
+- [ ] **Step 4: 저장소 시크릿 등록 (사람이 직접)**
+
+GitHub 저장소 > Settings > Secrets and variables > Actions 에서 세 개를 등록한다. 값은 `.env.local`과 같다.
+
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+- [ ] **Step 5: 워크플로 작성**
+
+`.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: 린트 · 타입 · 단위 테스트 · 빌드
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+        env:
+          # 빌드 시점에는 DB에 접근하지 않는다. 형식만 맞으면 된다.
+          NEXT_PUBLIC_SUPABASE_URL: https://build-only.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-only
+
+  db:
+    name: RLS 정책 테스트
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:db
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+```
+
+- [ ] **Step 6: 커밋과 푸시**
+
+```bash
+git add -A
+git commit -m "ci: 린트·타입·단위 테스트·빌드 워크플로 추가
+
+RLS 테스트는 시크릿이 필요하고 느리므로 PR에서만 별도 잡으로 돌린다."
+git push
+```
+
+- [ ] **Step 7: CI 통과 확인**
+
+```bash
+gh run watch
+```
+
+`gh`가 없으면 GitHub 저장소의 Actions 탭에서 `check` 잡이 초록인지 확인한다.
+
+Expected: `check` 잡 성공. 실패하면 로그의 실패한 스텝을 로컬에서 같은 명령으로 재현해 고친다.
+
+---
+
 ## 완료 기준
 
 - [ ] `npm test` 전부 통과 (단위 + RLS)
@@ -2738,6 +2858,8 @@ git commit -m "feat: 시드 적재 스크립트와 실제 후기 CSV 틀 추가
 - [ ] `npm run build` 성공
 - [ ] Supabase `fit_reviews`에 250건 이상 적재
 - [ ] `scripts/inspect.ts` 출력의 상위 유사 후기가 눈으로 봐도 납득 가능
+- [ ] GitHub Actions `check` 잡 초록
+- [ ] `npm run test:unit`이 네트워크 없이 몇 초 안에 끝남
 
 ## 다음 계획
 
