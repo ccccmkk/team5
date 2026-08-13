@@ -142,8 +142,8 @@ export function ModelDetail({
         <section className="border-line rounded-sm border p-5">
           <p className="font-medium">비슷한 체형의 후기가 아직 부족합니다.</p>
           <p className="text-ink-muted mt-1 text-sm">
-            아래 후기를 유사도 순으로 보여드립니다. 유사도가 낮으니 참고만
-            하세요.
+            아래는 유사도 순이지만 상위 유사도가 낮습니다. 추천 사이즈를 내지
+            않습니다.
           </p>
         </section>
       )}
