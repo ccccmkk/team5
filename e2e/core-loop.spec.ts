@@ -72,8 +72,13 @@ test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }
   const nickname = `E2E테스터${Date.now() % 10000}`;
   const comment = `E2E 확인용 ${Date.now()}`;
 
-  // 1. 체형 입력 — 로그인 화면을 거치지 않는다
-  await page.goto("/onboarding");
+  // 1. 첫 화면은 로그인처럼 보이지만 벽이 아니다. 여기서 막히면 나머지가 다 죽는다.
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "구글로 시작하기" })).toBeVisible();
+  await page.getByRole("link", { name: "로그인 없이 시작" }).click();
+
+  // 2. 체형 입력 — 로그인하지 않은 채로 도달한다
+  await expect(page).toHaveURL(/\/onboarding\/?$/);
   await expect(page.getByRole("heading", { name: "체형 입력" })).toBeVisible();
 
   await page.locator('input[type="text"]').fill(nickname);
@@ -93,12 +98,12 @@ test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }
   await page.getByRole("button", { name: "저장하고 사이즈 보기" }).click();
   await expect(page).toHaveURL(/\/models\/?$/);
 
-  // 2. 모델 상세에서 추천이 나온다
+  // 3. 모델 상세에서 추천이 나온다
   await page.goto("/models/501");
   await expect(page.getByText("명이 만족")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("나와 비슷한 순")).toBeVisible();
 
-  // 3. 후기 작성 — 사이즈와 만족도는 자유 입력이 아니라 선택이다
+  // 4. 후기 작성 — 사이즈와 만족도는 자유 입력이 아니라 선택이다
   await page.goto("/reviews/new?model=501");
 
   // 501 사이즈표에 있는 값만 버튼으로 나온다
@@ -114,11 +119,11 @@ test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }
   await page.locator("textarea").fill(comment);
   await page.getByRole("button", { name: "후기 등록" }).click();
 
-  // 4. 내 후기가 목록에 보인다 (샘플 배지 없이)
+  // 5. 내 후기가 목록에 보인다 (샘플 배지 없이)
   await expect(page).toHaveURL(/\/models\/501\/?$/);
   await expect(page.getByText(comment)).toBeVisible({ timeout: 15_000 });
 
-  // 5. 정리 — /me에서 삭제한다
+  // 6. 정리 — /me에서 삭제한다
   await page.goto("/me");
   await expect(page.getByText(comment)).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "삭제" }).first().click();

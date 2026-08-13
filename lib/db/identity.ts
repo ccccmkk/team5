@@ -87,6 +87,19 @@ export function onIdentitySettled(callback: () => void): () => void {
   return () => data.subscription.unsubscribe();
 }
 
+/**
+ * 화면이 부르는 단일 진입점. 지금 세션이 무엇이냐에 따라 연결과 로그인이
+ * 갈리는데, 그 판단을 화면마다 되풀이하면 한쪽만 고쳐져 어긋난다.
+ *
+ * 익명 세션이 있으면 **반드시 연결**이어야 한다. 여기서 `signInWithGoogle`을
+ * 부르면 익명 계정이 버려지면서 그 사람이 방금 쓴 후기가 같이 사라진다.
+ */
+export async function continueWithGoogle(): Promise<void> {
+  const state = await getIdentityState();
+  if (state.kind === "anonymous") return linkGoogle();
+  return signInWithGoogle();
+}
+
 export async function signOut(): Promise<void> {
   const supabase = getBrowserClient();
   const { error } = await supabase.auth.signOut();
