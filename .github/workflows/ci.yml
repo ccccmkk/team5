@@ -7,6 +7,10 @@ on:
   # RLS 잡을 PR 없이도 돌려볼 수 있게 열어둔다
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: 린트 · 타입 · 단위 테스트 · 빌드
