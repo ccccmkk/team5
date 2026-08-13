@@ -1,6 +1,11 @@
 import type { EventMap, EventName } from "./events";
 
-export type { EmptyStateReason, EventMap, EventName } from "./events";
+export type {
+  EmptyStateReason,
+  EventMap,
+  EventName,
+  ShopDestination,
+} from "./events";
 export { countOptionalFields, similarityBucket } from "./events";
 
 type Gtag = (

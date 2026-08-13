@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { FitScale } from "@/components/FitScale";
 import { MeasureBar } from "@/components/MeasureBar";
 import { SimilarityBadge } from "@/components/SimilarityBadge";
-import { track, type EmptyStateReason } from "@/lib/analytics/track";
+import {
+  track,
+  type EmptyStateReason,
+  type ShopDestination,
+} from "@/lib/analytics/track";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { getReviews } from "@/lib/db/reviews";
 import {
@@ -17,9 +21,11 @@ import {
   type RankedReview,
 } from "@/lib/fit-matching";
 import { issueLabel } from "@/lib/view/labels";
+import { shopLabel, shopSearchUrl } from "@/lib/view/shop";
 
 const FIT_PARTS: FitPart[] = ["waistFit", "thighFit", "hipFit", "lengthFit"];
 const VISIBLE_REVIEWS = 20;
+const SHOP: ShopDestination = "musinsa";
 
 function SkeletonBlock({ className }: { className: string }) {
   return <div aria-hidden="true" className={`bg-line animate-pulse rounded-sm ${className}`} />;
@@ -180,6 +186,26 @@ export function ModelDetail({
               <p className="text-ink-muted tnum mt-3 font-mono text-xs">
                 내 입력 정확도 {Math.round(recommendation.profileConfidence * 100)}%
               </p>
+
+              {/*
+                사이즈를 확인한 직후가 사러 가고 싶은 순간이라 카드 안에 둔다.
+                클릭률이 H5의 분자다 (스펙 §15.1).
+              */}
+              <a
+                href={shopSearchUrl(modelId, recommendation.size)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() =>
+                  track("outbound_click", {
+                    model_id: modelId,
+                    size: recommendation.size,
+                    destination: SHOP,
+                  })
+                }
+                className="border-ink mt-4 block rounded-sm border py-3 text-center text-sm font-medium"
+              >
+                {shopLabel(SHOP)}에서 {modelId} {recommendation.size}인치 보기
+              </a>
             </section>
           ) : (
             <section className="border-line rounded-sm border p-5">

@@ -9,6 +9,9 @@ export type EmptyStateReason =
 
 export type SimilarityBucket = "high" | "mid" | "low";
 
+/** 추천 사이즈를 받은 뒤 실제로 사러 나가는 곳 */
+export type ShopDestination = "musinsa";
+
 export type EventMap = {
   profile_start: Record<string, never>;
   profile_complete: { confidence: number; optional_field_count: number };
@@ -21,6 +24,17 @@ export type EventMap = {
   review_start: { model_id: string };
   review_submit: { model_id: string; purchased_size: number };
   empty_state_shown: { reason: EmptyStateReason };
+  /**
+   * 추천을 보고 사러 나갔다. H5의 분자다.
+   *
+   * 후기 작성(H4)보다 허들이 훨씬 낮아 표본이 적어도 비율이 흔들리지 않는다.
+   * 트래픽이 수십 명 수준인 초기에 유일하게 읽을 만한 전환 지표다.
+   */
+  outbound_click: {
+    model_id: string;
+    size: number;
+    destination: ShopDestination;
+  };
 };
 
 export type EventName = keyof EventMap;
