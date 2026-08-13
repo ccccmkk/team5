@@ -1,6 +1,8 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
-import Link from "next/link";
+import { PageTransition } from "@/components/PageTransition";
+import { SiteHeader } from "@/components/SiteHeader";
 import { SERVICE_NAME, SERVICE_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
@@ -24,26 +26,18 @@ export const metadata: Metadata = {
   description: SERVICE_TAGLINE,
 };
 
+const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" className={`${sansKr.variable} ${mono.variable}`}>
       <body className="bg-surface text-ink font-sans antialiased">
-        <header className="border-line border-b">
-          <nav className="mx-auto flex max-w-2xl items-baseline gap-6 px-6 py-4">
-            <Link href="/" className="text-sm font-semibold">
-              {SERVICE_NAME}
-            </Link>
-            <Link href="/models" className="text-ink-muted text-sm">
-              모델
-            </Link>
-            <Link href="/onboarding" className="text-ink-muted text-sm">
-              체형 입력
-            </Link>
-          </nav>
-        </header>
-        {children}
+        <SiteHeader />
+        <PageTransition>{children}</PageTransition>
+        {/* 측정 ID가 없으면 아무것도 렌더하지 않는다 (로컬 개발에서 조용히 꺼짐) */}
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   );

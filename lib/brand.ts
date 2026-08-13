@@ -9,3 +9,9 @@ export const SERVICE_NAME = "리바이스 501·517 핏 데이터";
 
 export const SERVICE_TAGLINE =
   "나와 비슷한 체형인 사람들이 실제로 입어본 결과로 사이즈를 고릅니다.";
+
+/**
+ * 사이트맵과 JSON-LD에 쓰는 절대 URL. basePath를 포함한다.
+ * 커스텀 도메인으로 옮기면 여기와 next.config.ts의 basePath를 함께 고친다.
+ */
+export const SITE_URL = "https://ccccmkk.github.io/team5";

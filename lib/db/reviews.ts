@@ -27,6 +27,31 @@ export async function getReviews(
   return (data as FitReviewRow[]).map(toFitReview);
 }
 
+/** 내가 쓴 후기만. 세션이 없으면 빈 배열이다 (익명 사용자도 본인 것은 소유한다). */
+export async function getMyReviews(): Promise<FitReview[]> {
+  const supabase = getBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("fit_reviews")
+    .select(REVIEW_COLUMNS)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data as FitReviewRow[]).map(toFitReview);
+}
+
+/** RLS가 본인 행만 지우도록 강제한다. 남의 것을 지우려 하면 아무 행도 안 지워진다. */
+export async function deleteReview(id: string): Promise<void> {
+  const supabase = getBrowserClient();
+  const { error } = await supabase.from("fit_reviews").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * 후기를 저장한다. 작성 시점의 체형을 snapshot으로 함께 박는다 (스펙 §6.3).
  * 나중에 프로필을 고쳐도 이 후기의 유사도 계산은 흔들리지 않는다.

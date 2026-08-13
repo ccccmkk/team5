@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FitScale } from "@/components/FitScale";
 import { MeasureBar } from "@/components/MeasureBar";
 import { SimilarityBadge } from "@/components/SimilarityBadge";
+import { track, type EmptyStateReason } from "@/lib/analytics/track";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { getReviews } from "@/lib/db/reviews";
 import {
@@ -56,6 +57,36 @@ export function ModelDetail({
       }));
 
   const recommendation = profile ? recommendSize(ranked, profile) : null;
+
+  // 계측은 데이터가 확정된 뒤 한 번만 보낸다.
+  // H3은 has_profile로 나눈 체류시간 비교로 본다 (스펙 §15.1).
+  useEffect(() => {
+    if (!loaded) return;
+
+    track("view_model", { model_id: modelId, has_profile: profile !== null });
+
+    if (recommendation?.status === "ok") {
+      track("view_recommendation", {
+        model_id: modelId,
+        recommended_size: recommendation.size,
+        support_count: recommendation.supportCount,
+      });
+    }
+
+    // 빈 화면이 뜬 이유를 남긴다. 콜드스타트 진단의 핵심 지표다.
+    const reason: EmptyStateReason | null =
+      reviews.length === 0
+        ? "no_reviews"
+        : profile === null
+          ? "no_profile"
+          : recommendation?.status === "insufficient_data"
+            ? "insufficient_recommendation"
+            : null;
+
+    if (reason) track("empty_state_shown", { reason });
+    // recommendation은 매 렌더 새 객체라 의존성에 넣으면 무한 루프가 된다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, modelId, profile, reviews.length]);
 
   const thighValues = reviews
     .map((r) => r.snapshot.thighCm)

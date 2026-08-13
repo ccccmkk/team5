@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics/track";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { insertReview } from "@/lib/db/reviews";
 import type { FitPart } from "@/lib/fit-matching";
@@ -36,11 +37,14 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
   const [failure, setFailure] = useState<string | null>(null);
 
   useEffect(() => {
+    // H4(후기 작성 전환율)의 분모
+    track("review_start", { model_id: defaultModelId });
+
     getMyProfile()
       .then(setProfile)
       .catch(() => setProfile(null))
       .finally(() => setChecked(true));
-  }, []);
+  }, [defaultModelId]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -62,6 +66,11 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
     setSaving(true);
     try {
       await insertReview(result.data, profile);
+      // H4의 분자
+      track("review_submit", {
+        model_id: result.data.modelId,
+        purchased_size: result.data.purchasedSize,
+      });
       router.push(`/models/${result.data.modelId}`);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : "저장에 실패했습니다");

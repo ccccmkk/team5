@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { countOptionalFields, track } from "@/lib/analytics/track";
 import { getMyProfile, upsertMyProfile } from "@/lib/db/profile";
 import { profileConfidence } from "@/lib/fit-matching";
 import { bodyProfileSchema } from "@/lib/validation/schemas";
@@ -34,6 +35,11 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+
+  // H1(온보딩 완료율)의 분모
+  useEffect(() => {
+    track("profile_start", {});
+  }, []);
 
   // 이미 입력한 적이 있으면 그 값으로 채운다 (수정 화면 겸용)
   useEffect(() => {
@@ -85,6 +91,11 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
     setSaving(true);
     try {
       await upsertMyProfile(result.data);
+      // H1의 분자, H2(선택 항목 입력률)의 원자료
+      track("profile_complete", {
+        confidence: profileConfidence(result.data),
+        optional_field_count: countOptionalFields(result.data),
+      });
       router.push(nextPath);
     } catch (error) {
       // 입력값은 그대로 둔다. 여섯 개를 다시 치게 만들면 그 사용자는 돌아오지 않는다.

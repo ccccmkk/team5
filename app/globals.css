@@ -19,3 +19,44 @@
 .tnum {
   font-variant-numeric: tabular-nums;
 }
+
+/* 경로가 바뀔 때 짧게 밀려 올라온다. 이동했다는 감각을 준다. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 220ms ease-out;
+}
+
+/* 누르면 눌린 느낌을 준다 */
+button:not(:disabled),
+a {
+  transition:
+    opacity 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+button:not(:disabled):active {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
