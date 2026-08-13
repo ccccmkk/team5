@@ -39,7 +39,7 @@ test("헤더가 현재 위치를 표시한다", async ({ page }) => {
   expect(Math.round(box!.width)).toBe(Math.round(linkBox!.width));
 
   // 다른 메뉴는 밑줄이 없다
-  const inactive = page.getByRole("link", { name: "체형 입력" });
+  const inactive = page.getByRole("link", { name: "내 정보" });
   await expect(inactive).not.toHaveAttribute("aria-current", "page");
   expect((await inactive.locator("span").boundingBox())!.width).toBeLessThan(1);
 
@@ -48,14 +48,24 @@ test("헤더가 현재 위치를 표시한다", async ({ page }) => {
   await expect(home).toBeVisible();
   expect((await home.boundingBox())!.width).toBeGreaterThan(10);
 
+  // 메뉴는 두 개뿐이다. 체형 입력은 내 정보의 하위 동작이라 메뉴로 두지 않는다.
+  await expect(page.locator("header nav li")).toHaveCount(2);
+
   // 이동하면 활성 표시가 따라온다
-  await page.getByRole("link", { name: "체형 입력" }).click();
-  await expect(page).toHaveURL(/\/onboarding\/?$/);
-  await expect(page.getByRole("link", { name: "체형 입력" })).toHaveAttribute(
+  await inactive.click();
+  await expect(page).toHaveURL(/\/me\/?$/);
+  await expect(page.getByRole("link", { name: "내 정보" })).toHaveAttribute(
     "aria-current",
     "page",
   );
   await expect(active).not.toHaveAttribute("aria-current", "page");
+
+  // 체형 입력 화면에서도 내 정보가 활성이다. 위치 감각을 잃지 않게.
+  await page.goto("/onboarding");
+  await expect(page.getByRole("link", { name: "내 정보" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }) => {
