@@ -10,7 +10,7 @@ import { ensureSession } from "./session";
 export type { BodyProfile } from "./mappers";
 
 const PROFILE_COLUMNS =
-  "user_id, nickname, height_cm, weight_kg, waist_inch, thigh_cm, hip_cm, inseam_cm";
+  "user_id, nickname, gender, height_cm, weight_kg, waist_inch, thigh_cm, hip_cm, inseam_cm";
 
 /** 브라우저 전용. 빌드 시점에는 로그인한 사용자가 없다. */
 export async function getMyProfile(): Promise<BodyProfile | null> {
