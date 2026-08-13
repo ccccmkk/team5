@@ -19,7 +19,6 @@ jobs:
   migrate:
     name: Apply migrations to test Supabase
     runs-on: ubuntu-latest
-    environment: test
     steps:
       - uses: actions/checkout@v4
 
@@ -27,11 +26,22 @@ jobs:
         with:
           version: latest
 
+      - name: Resolve project ref
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          PROJECT_REF="${SUPABASE_URL#https://}"
+          PROJECT_REF="${PROJECT_REF%.supabase.co}"
+          if [ -z "$PROJECT_REF" ] || [ "$PROJECT_REF" = "$SUPABASE_URL" ]; then
+            echo "::error::SUPABASE_URL에서 project ref를 추출하지 못했습니다."
+            exit 1
+          fi
+          echo "SUPABASE_PROJECT_REF=$PROJECT_REF" >> "$GITHUB_ENV"
+
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Apply pending migrations
