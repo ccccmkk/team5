@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { StartActions } from "@/components/StartActions";
 import { SERVICE_NAME, SERVICE_TAGLINE } from "@/lib/brand";
 
 export default function Home() {
@@ -24,21 +24,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link
-          href="/onboarding"
-          className="bg-ink text-surface rounded-sm px-5 py-3 font-medium"
-        >
-          체형 입력하고 시작
-        </Link>
-        <Link
-          href="/models"
-          className="border-line rounded-sm border px-5 py-3 font-medium"
-        >
-          그냥 둘러보기
-        </Link>
-      </div>
-
+      <StartActions />
     </main>
   );
 }

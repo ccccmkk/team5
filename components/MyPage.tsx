@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FitScale } from "@/components/FitScale";
 import {
+  continueWithGoogle,
   getIdentityState,
-  linkGoogle,
   onIdentitySettled,
-  signInWithGoogle,
   signOut,
   type IdentityState,
 } from "@/lib/db/identity";
@@ -52,12 +51,9 @@ function MyPageSkeleton() {
         </div>
       </section>
 
-      <section>
-        <SkeletonBlock className="mb-4 h-4 w-24" />
-        <div className="border-line rounded-sm border p-5">
-          <SkeletonBlock className="h-4 w-full" />
-          <SkeletonBlock className="mt-2 h-4 w-4/5" />
-        </div>
+      <section className="border-line flex items-center justify-between gap-3 border-t pt-5">
+        <SkeletonBlock className="h-4 w-28" />
+        <SkeletonBlock className="h-9 w-24" />
       </section>
     </div>
   );
@@ -252,55 +248,45 @@ export function MyPage() {
         )}
       </section>
 
-      <section>
-        <h2 className="mb-4 text-sm font-semibold">기록 보관 범위</h2>
-        <div className="border-line rounded-sm border p-5">
-          {identity.kind === "linked" ? (
-            <>
-              <p className="text-sm">
-                구글 계정에 연결되어 있습니다
-                {identity.email && (
-                  <>
-                    {" — "}
-                    <span className="font-mono text-xs">{identity.email}</span>
-                  </>
-                )}
-                . 다른 기기에서 같은 계정으로 들어오면 위 기록이 그대로 보입니다.
-              </p>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="border-line mt-4 rounded-sm border px-4 py-2 text-sm font-medium"
-              >
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm">
-                지금은 이 브라우저에만 기록이 남습니다. 기기를 바꾸거나 브라우저
-                데이터를 지우면 위 내용에 접근할 수 없습니다.
-              </p>
-              <p className="text-ink-muted mt-2 text-sm">
-                구글 계정을 연결하면 지금까지 남긴 기록이 그대로 따라옵니다. 새로
-                만드는 게 아니라 이 기록에 계정을 얹는 것이라 다시 입력할 필요가
-                없습니다.
-              </p>
-              <button
-                type="button"
-                disabled={linking}
-                onClick={() =>
-                  handleAccount(
-                    identity.kind === "anonymous" ? linkGoogle : signInWithGoogle,
-                  )
-                }
-                className="bg-ink text-surface mt-4 rounded-sm px-4 py-2 text-sm font-medium disabled:opacity-50"
-              >
-                {linking ? "이동 중" : "구글 계정 연결"}
-              </button>
-            </>
-          )}
-        </div>
+      {/*
+        계정 안내는 첫 화면(로그인)으로 옮겼다. 여기서는 지금 상태와 빠져나갈
+        길만 한 줄로 둔다 — 이미 들어와 있는 사람에게 설명은 잡음이다.
+      */}
+      <section className="border-line flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+        {identity.kind === "linked" ? (
+          <>
+            <p className="text-ink-muted text-sm">
+              구글 계정
+              {identity.email && (
+                <>
+                  {" "}
+                  <span className="text-ink font-mono text-xs">
+                    {identity.email}
+                  </span>
+                </>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="border-line rounded-sm border px-4 py-2 text-sm font-medium"
+            >
+              로그아웃
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-ink-muted text-sm">로그인 없이 사용 중</p>
+            <button
+              type="button"
+              disabled={linking}
+              onClick={() => handleAccount(continueWithGoogle)}
+              className="border-line rounded-sm border px-4 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {linking ? "이동 중" : "구글로 로그인"}
+            </button>
+          </>
+        )}
       </section>
     </div>
   );
