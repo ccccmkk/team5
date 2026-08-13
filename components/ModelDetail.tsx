@@ -187,12 +187,8 @@ export function ModelDetail({
                 내 입력 정확도 {Math.round(recommendation.profileConfidence * 100)}%
               </p>
 
-              {/*
-                사이즈를 확인한 직후가 사러 가고 싶은 순간이라 카드 안에 둔다.
-                클릭률이 H5의 분자다 (스펙 §15.1).
-              */}
               <a
-                href={shopSearchUrl(modelId, recommendation.size)}
+                href={shopSearchUrl(modelId)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() =>
@@ -204,7 +200,7 @@ export function ModelDetail({
                 }
                 className="border-ink mt-4 block rounded-sm border py-3 text-center text-sm font-medium"
               >
-                {shopLabel(SHOP)}에서 {modelId} {recommendation.size}인치 보기
+                {shopLabel(SHOP)}에서 {modelId} 보기
               </a>
             </section>
           ) : (
