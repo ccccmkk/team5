@@ -1,26 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
-import { listModels } from "@/lib/sizing";
 import {
   generateSyntheticReviews,
   type SyntheticReview,
 } from "./generate-synthetic";
 import { readSeedCsv } from "./read-csv";
 
-// 모델 12개 × 성별 2로 나뉘므로 모델당 성별당 25건쯤 되도록 잡는다.
-// 이보다 적으면 성별 필터를 켰을 때 추천 후보가 부족해진다.
+// 모델 카탈로그의 단일 출처는 data/models.ts다.
+// Supabase에는 사용자/시드 후기만 저장한다.
 const SYNTHETIC_COUNT = 600;
 const SYNTHETIC_SEED = 20260812;
 const CSV_PATH = "data/seed-reviews.csv";
-
-function modelRows() {
-  return listModels().map((m) => ({
-    id: m.id,
-    name: m.name,
-    fit_type: m.fitType,
-    description: m.description,
-    size_chart: m.sizeChart,
-  }));
-}
 
 function reviewRow(review: SyntheticReview) {
   return {
@@ -48,28 +37,13 @@ function collectReviews() {
   return { csv, synthetic, all: [...csv, ...synthetic] };
 }
 
-/* ---------- SQL 출력 모드 ---------- */
-
 function quote(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-/**
- * service_role 키 없이도 시드를 넣을 수 있게 SQL을 찍어준다.
- * Supabase 대시보드 > SQL Editor에 붙여넣으면 된다.
- */
+/** service_role 없이 시드 후기 SQL을 출력한다. */
 function printSql(reset: boolean) {
   const lines: string[] = ["begin;"];
-
-  for (const m of modelRows()) {
-    lines.push(
-      `insert into jean_models (id, name, fit_type, description, size_chart) values (` +
-        `${quote(m.id)}, ${quote(m.name)}, ${quote(m.fit_type)}, ${quote(m.description)}, ` +
-        `${quote(JSON.stringify(m.size_chart))}::jsonb) ` +
-        `on conflict (id) do update set name = excluded.name, fit_type = excluded.fit_type, ` +
-        `description = excluded.description, size_chart = excluded.size_chart;`,
-    );
-  }
 
   if (reset) {
     lines.push("delete from fit_reviews where is_seed = true;");
@@ -89,8 +63,6 @@ function printSql(reset: boolean) {
   console.log(lines.join("\n"));
 }
 
-/* ---------- 직접 적재 모드 ---------- */
-
 async function seedDirect(reset: boolean) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -106,11 +78,6 @@ async function seedDirect(reset: boolean) {
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-
-  const models = modelRows();
-  const modelResult = await admin.from("jean_models").upsert(models);
-  if (modelResult.error) throw modelResult.error;
-  console.log(`모델 ${models.length}건 적재`);
 
   if (reset) {
     const { error } = await admin
