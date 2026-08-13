@@ -74,8 +74,14 @@ export default async function ModelPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <h1 className="text-2xl font-bold tracking-tight">
-        리바이스 {model.name}
+      <h1>
+        <span className="text-ink-muted block text-sm font-medium">
+          리바이스
+        </span>
+        <span className="display-num mt-1 block font-mono">{model.id}</span>
+        <span className="mt-2 block text-base font-medium">
+          {model.name.replace(`${model.id} `, "")}
+        </span>
       </h1>
       <p className="text-ink-muted mt-2 mb-10">{model.description}</p>
       <ModelDetail modelId={id} initialReviews={reviews} />

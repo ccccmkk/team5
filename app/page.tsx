@@ -8,12 +8,13 @@ export default function Home() {
         {SERVICE_NAME}
       </p>
 
-      <h1 className="text-3xl leading-snug font-bold tracking-tight">
+      <h1 className="display">
         같은 32인치인데
-        <br />왜 나한테만 안 맞을까
+        <br />왜 나한테만
+        <br />안 맞을까
       </h1>
 
-      <p className="text-ink-muted mt-4">{SERVICE_TAGLINE}</p>
+      <p className="text-ink-muted mt-6">{SERVICE_TAGLINE}</p>
 
       <div className="border-line mt-10 border-y py-6">
         <p className="text-sm">
