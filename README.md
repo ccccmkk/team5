@@ -127,6 +127,7 @@ ESLint와 테스트가 강제한다. 어기면 CI가 깨진다.
 | [설계 스펙](docs/superpowers/specs/2026-08-12-levis-fit-service-design.md) | 문제 정의, 아키텍처, 데이터 모델, 알고리즘, KPI. **단일 출처** |
 | [배포 가이드](docs/deploy.md) | GitHub Pages, Supabase migration, 시크릿, 시드 적재, 자주 나는 문제 |
 | [브랜드 가이드](docs/design/brand-guide.md) | 계측기 방향, 토큰, 금지 목록, 문구 원칙 |
+| [개발 기록](docs/journey/README.md) | 피드백을 받고 방향을 바꾼 지점을 화면과 함께 시간 순으로 |
 | [검증 기록](docs/experiments/README.md) | 주 1회 가설 검증 템플릿 |
 | [구현 계획](docs/superpowers/plans/) | 실행 완료된 계획 기록 |
 
