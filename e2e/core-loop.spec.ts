@@ -1,6 +1,22 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * 테스트가 중간에 실패하면 본문 끝의 정리 단계까지 가지 못해
+ * 공유 DB에 후기가 남는다. 실제로 세 건이 남았던 적이 있다.
+ *
+ * 익명 세션은 자기가 쓴 후기만 소유하므로, /me에서 보이는 것을 전부 지우면
+ * 정확히 이 테스트가 만든 것만 지워진다.
+ */
+test.afterEach(async ({ page }) => {
+  await page.goto("/me");
+  const deleteButtons = page.getByRole("button", { name: "삭제" });
+  for (let left = await deleteButtons.count(); left > 0; left -= 1) {
+    await deleteButtons.first().click();
+    await expect(deleteButtons).toHaveCount(left - 1);
+  }
+});
+
+/**
  * 핵심 루프 하나만 끝까지 돌린다: 체형 입력 → 추천 확인 → 후기 작성 → 정리.
  *
  * 실제 Supabase에 붙으므로 마지막에 반드시 자기가 만든 후기를 지운다.
