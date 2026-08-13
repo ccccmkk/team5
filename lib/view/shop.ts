@@ -21,8 +21,11 @@ export function shopLabel(destination: ShopDestination): string {
 /**
  * 무신사에는 모델별 고정 상품 페이지가 없다. 상품이 계속 바뀌므로
  * 특정 상품 URL을 박아두면 금방 죽은 링크가 된다. 검색 결과로 보낸다.
+ *
+ * 사이즈까지 검색어에 넣으면 무신사 검색 결과가 오히려 좁아지거나 0건이 될 수
+ * 있으므로 모델까지만 검색하고, 추천 사이즈는 우리 화면에서만 안내한다.
  */
-export function shopSearchUrl(modelId: string, size: number): string {
-  const keyword = `리바이스 ${modelId} ${size}`;
+export function shopSearchUrl(modelId: string): string {
+  const keyword = `리바이스 ${modelId}`;
   return `https://www.musinsa.com/search/goods?keyword=${encodeURIComponent(keyword)}`;
 }
