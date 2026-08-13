@@ -61,10 +61,27 @@ lib/
   db/           Supabase 접근                 ← supabase-js는 여기서만
 data/           모델 정의, 실제 수집 후기 CSV
 scripts/        합성 데이터 생성·시드 적재
-supabase/       마이그레이션
+supabase/       마이그레이션 (DB 스키마의 단일 출처)
 e2e/            Playwright
 docs/           설계·계획·배포·검증 기록
 ```
+
+### DB 마이그레이션
+
+이 저장소의 테스트 Supabase는 `supabase/migrations/`를 DB 스키마의 단일 출처로 사용한다.
+`main`에 migration이 push되면 `Supabase Migrate` GitHub Action이 `supabase db push`로 실제 테스트 DB에 적용한다.
+수동 실행도 Actions > Supabase Migrate > Run workflow에서 가능하다.
+
+GitHub Actions에 다음 repository/environment secret이 필요하다.
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
+
+스키마 변경은 대시보드에서 임의로 먼저 바꾸기보다 새 migration SQL로 남긴다. 테스트 프로젝트이므로
+`create/alter/drop`도 migration으로 수행할 수 있지만, `drop table`, 대량 삭제처럼 파괴적인 변경은
+migration diff를 확인한 뒤 커밋한다. 브라우저 번들에는 위 관리용 secret을 절대 넣지 않는다.
+자세한 절차는 [배포 가이드](docs/deploy.md)를 따른다.
 
 ### 지켜야 할 경계 세 가지
 
@@ -90,6 +107,7 @@ ESLint와 테스트가 강제한다. 어기면 CI가 깨진다.
   `auth.users` 행이라 RLS가 그대로 적용된다 — 본인 것만 고치고, 남의 체형 프로필은 못 읽는다.
 - **서버가 없다.** 정적 export라 브라우저가 Supabase를 직접 호출한다. **검증의 최종 방어선은
   Zod가 아니라 DB의 `CHECK` 제약과 RLS다.**
+- **DB 스키마 변경은 migration으로 관리한다.** 테스트 Supabase에는 main의 migration이 GitHub Actions로 적용된다.
 - **모델 상세는 빌드 시점에 후기를 HTML로 굽는다.** 그래야 검색엔진이 내용을 본다.
   새 후기는 재빌드 전까지 검색에 안 잡히므로 매일 03:00 KST에 자동 재빌드한다.
 - **성별은 유사도 가중치가 아니라 필터다.** 치수가 아니라 범주라 거리 계산에 넣을 근거가 없다.
@@ -107,7 +125,7 @@ ESLint와 테스트가 강제한다. 어기면 CI가 깨진다.
 | 문서 | 내용 |
 |---|---|
 | [설계 스펙](docs/superpowers/specs/2026-08-12-levis-fit-service-design.md) | 문제 정의, 아키텍처, 데이터 모델, 알고리즘, KPI. **단일 출처** |
-| [배포 가이드](docs/deploy.md) | GitHub Pages 설정, 시크릿, 시드 적재, 자주 나는 문제 |
+| [배포 가이드](docs/deploy.md) | GitHub Pages, Supabase migration, 시크릿, 시드 적재, 자주 나는 문제 |
 | [브랜드 가이드](docs/design/brand-guide.md) | 계측기 방향, 토큰, 금지 목록, 문구 원칙 |
 | [검증 기록](docs/experiments/README.md) | 주 1회 가설 검증 템플릿 |
 | [구현 계획](docs/superpowers/plans/) | 실행 완료된 계획 기록 |
