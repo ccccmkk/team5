@@ -88,13 +88,19 @@ test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }
   await expect(page.getByText("명이 만족")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("나와 비슷한 순")).toBeVisible();
 
-  // 3. 후기 작성
+  // 3. 후기 작성 — 사이즈와 만족도는 자유 입력이 아니라 선택이다
   await page.goto("/reviews/new?model=501");
-  await page.locator('input[type="number"]').first().fill("33");
+
+  // 501 사이즈표에 있는 값만 버튼으로 나온다
+  await page.getByRole("button", { name: "33", exact: true }).click();
+
   await page
     .getByRole("button", { name: "많이 낌", exact: true })
     .nth(1) // 허벅지
     .click();
+
+  await page.getByRole("button", { name: /^5좋음$|^5\s*좋음$/ }).click();
+
   await page.locator("textarea").fill(comment);
   await page.getByRole("button", { name: "후기 등록" }).click();
 

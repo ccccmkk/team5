@@ -7,12 +7,20 @@ import { track } from "@/lib/analytics/track";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { insertReview } from "@/lib/db/reviews";
 import type { FitPart } from "@/lib/fit-matching";
-import { MODEL_IDS } from "@/lib/sizing";
+import { MODEL_IDS, getModel, isModelId } from "@/lib/sizing";
 import { fitReviewSchema } from "@/lib/validation/schemas";
 import { fitLabel, partLabel } from "@/lib/view/labels";
 
 const FIT_PARTS: FitPart[] = ["waistFit", "thighFit", "hipFit", "lengthFit"];
 const LEVELS = [-2, -1, 0, 1, 2];
+
+const OVERALL_LEVELS = [
+  { value: 1, label: "별로" },
+  { value: 2, label: "아쉬움" },
+  { value: 3, label: "보통" },
+  { value: 4, label: "괜찮음" },
+  { value: 5, label: "좋음" },
+];
 
 export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
   const router = useRouter();
@@ -45,6 +53,23 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
       .catch(() => setProfile(null))
       .finally(() => setChecked(true));
   }, [defaultModelId]);
+
+  const availableSizes = isModelId(values.modelId)
+    ? getModel(values.modelId).sizeChart.sizes.map((s) => s.waistInch)
+    : [];
+
+  function selectModel(modelId: string) {
+    // 모델을 바꾸면 그 모델에 없는 사이즈는 지운다. 남겨두면 잘못된 값이 제출된다.
+    const sizes = isModelId(modelId)
+      ? getModel(modelId).sizeChart.sizes.map((s) => s.waistInch)
+      : [];
+    const keep = sizes.includes(Number(values.purchasedSize));
+    setValues({
+      ...values,
+      modelId,
+      purchasedSize: keep ? values.purchasedSize : "",
+    });
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -102,7 +127,7 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
         <span className="text-ink-muted text-sm">모델</span>
         <select
           value={values.modelId}
-          onChange={(e) => setValues({ ...values, modelId: e.target.value })}
+          onChange={(e) => selectModel(e.target.value)}
           className="border-line mt-1 w-full rounded-sm border px-3 py-2"
         >
           {MODEL_IDS.map((id) => (
@@ -113,25 +138,37 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
         </select>
       </label>
 
-      <label className="block">
-        <span className="text-ink-muted text-sm">
-          구매한 허리 사이즈 (인치)
-        </span>
-        <input
-          type="number"
-          inputMode="numeric"
-          value={values.purchasedSize}
-          onChange={(e) =>
-            setValues({ ...values, purchasedSize: e.target.value })
-          }
-          className="border-line focus:border-ink mt-1 w-full rounded-sm border px-3 py-2 font-mono tabular-nums outline-none"
-        />
+      <div>
+        <span className="text-ink-muted text-sm">구매한 허리 사이즈 (인치)</span>
+        {/* 해당 모델이 실제로 나오는 사이즈만 고르게 한다. 자유 입력이면
+            존재하지 않는 사이즈가 들어와 추천 집계가 흩어진다. */}
+        <div className="mt-1 flex flex-wrap gap-1">
+          {availableSizes.map((size) => {
+            const active = Number(values.purchasedSize) === size;
+            return (
+              <button
+                key={size}
+                type="button"
+                onClick={() =>
+                  setValues({ ...values, purchasedSize: String(size) })
+                }
+                className={`tnum min-w-11 rounded-sm border px-3 py-2 font-mono text-sm ${
+                  active
+                    ? "bg-ink text-surface border-ink"
+                    : "border-line bg-surface"
+                }`}
+              >
+                {size}
+              </button>
+            );
+          })}
+        </div>
         {errors.purchasedSize && (
           <span className="text-warn mt-1 block text-sm">
             {errors.purchasedSize}
           </span>
         )}
-      </label>
+      </div>
 
       <fieldset className="space-y-4">
         <legend className="text-sm font-semibold">부위별 핏</legend>
@@ -163,20 +200,32 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
         ))}
       </fieldset>
 
-      <label className="block">
-        <span className="text-ink-muted text-sm">전체 만족도 (1~5)</span>
-        <input
-          type="number"
-          min={1}
-          max={5}
-          value={values.overall}
-          onChange={(e) => setValues({ ...values, overall: e.target.value })}
-          className="border-line focus:border-ink mt-1 w-full rounded-sm border px-3 py-2 font-mono tabular-nums outline-none"
-        />
+      <div>
+        <span className="text-ink-muted text-sm">전체 만족도</span>
+        <div className="mt-1 flex gap-px">
+          {OVERALL_LEVELS.map(({ value, label }) => {
+            const active = Number(values.overall) === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setValues({ ...values, overall: String(value) })}
+                className={`flex-1 rounded-sm border py-2 text-xs ${
+                  active
+                    ? "bg-ink text-surface border-ink"
+                    : "border-line bg-surface"
+                }`}
+              >
+                <span className="tnum block font-mono text-sm">{value}</span>
+                <span className="mt-0.5 block">{label}</span>
+              </button>
+            );
+          })}
+        </div>
         {errors.overall && (
           <span className="text-warn mt-1 block text-sm">{errors.overall}</span>
         )}
-      </label>
+      </div>
 
       <label className="block">
         <span className="text-ink-muted text-sm">한줄평 (선택, 300자)</span>
@@ -197,13 +246,17 @@ export function ReviewForm({ defaultModelId }: { defaultModelId: string }) {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={saving || !profile}
-        className="bg-ink text-surface w-full rounded-sm py-3 font-medium disabled:opacity-50"
-      >
-        {saving ? "저장 중" : "후기 등록"}
-      </button>
+      {/* 폼이 길어서 맨 아래에 두면 스크롤을 끝까지 내려야 한다.
+          화면 하단에 붙여 어디서든 누를 수 있게 한다. */}
+      <div className="border-line bg-surface sticky bottom-0 -mx-6 border-t px-6 py-3">
+        <button
+          type="submit"
+          disabled={saving || !profile}
+          className="bg-ink text-surface w-full rounded-sm py-3 font-medium disabled:opacity-50"
+        >
+          {saving ? "저장 중" : "후기 등록"}
+        </button>
+      </div>
 
       {profile && (
         <p className="text-ink-muted text-xs">

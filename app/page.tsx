@@ -39,7 +39,6 @@ export default function Home() {
         </Link>
       </div>
 
-      <p className="text-ink-muted mt-6 text-sm">로그인이 필요 없습니다.</p>
     </main>
   );
 }

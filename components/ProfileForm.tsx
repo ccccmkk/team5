@@ -33,39 +33,82 @@ function filled(value: string | undefined): boolean {
   return (value ?? "").trim() !== "";
 }
 
+/**
+ * 저장 전 입력을 브라우저에 남긴다. 저장해야 세션이 생기는 구조라,
+ * 그 전에 새로고침하면 여섯 칸을 다시 채워야 했다.
+ * 저장에 성공하면 지운다 — 그때부터는 DB가 출처다.
+ */
+const DRAFT_KEY = "team5:profile-draft";
+
+function readDraft(): Record<string, string> | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ProfileForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // 복원이 끝나기 전에 빈 값으로 초안을 덮어쓰지 않도록 막는다
+  const [restored, setRestored] = useState(false);
 
   // H1(온보딩 완료율)의 분모
   useEffect(() => {
     track("profile_start", {});
   }, []);
 
-  // 이미 입력한 적이 있으면 그 값으로 채운다 (수정 화면 겸용)
+  // 저장된 프로필이 있으면 그것으로, 없으면 작성 중이던 초안으로 채운다
   useEffect(() => {
+    let alive = true;
+
     getMyProfile()
       .then((profile) => {
-        if (!profile) return;
-        setValues({
-          nickname: profile.nickname,
-          gender: profile.gender ?? "",
-          heightCm: String(profile.heightCm),
-          weightKg: String(profile.weightKg),
-          waistInch: String(profile.waistInch),
-          thighCm: profile.thighCm === undefined ? "" : String(profile.thighCm),
-          hipCm: profile.hipCm === undefined ? "" : String(profile.hipCm),
-          inseamCm:
-            profile.inseamCm === undefined ? "" : String(profile.inseamCm),
-        });
+        if (!alive) return;
+        if (profile) {
+          setValues({
+            nickname: profile.nickname,
+            gender: profile.gender ?? "",
+            heightCm: String(profile.heightCm),
+            weightKg: String(profile.weightKg),
+            waistInch: String(profile.waistInch),
+            thighCm:
+              profile.thighCm === undefined ? "" : String(profile.thighCm),
+            hipCm: profile.hipCm === undefined ? "" : String(profile.hipCm),
+            inseamCm:
+              profile.inseamCm === undefined ? "" : String(profile.inseamCm),
+          });
+          return;
+        }
+        setValues(readDraft() ?? {});
       })
       .catch(() => {
-        // 세션이 없으면 빈 폼으로 시작한다. 정상 경로다.
+        // 세션이 없는 첫 방문. 정상 경로다.
+        if (alive) setValues(readDraft() ?? {});
+      })
+      .finally(() => {
+        if (alive) setRestored(true);
       });
+
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  // 한 칸 채울 때마다 남긴다. 새로고침이나 실수로 뒤로가기를 해도 살아남는다.
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    } catch {
+      // 저장소를 못 쓰는 브라우저면 초안 없이 동작한다
+    }
+  }, [restored, values]);
 
   // 검증 통과 여부와 무관하게 항상 맞는 값을 보여준다
   const confidence = profileConfidence({
@@ -96,6 +139,12 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
     setSaving(true);
     try {
       await upsertMyProfile(result.data);
+      // 저장됐으니 초안은 더 필요 없다. 이제 DB가 출처다.
+      try {
+        window.localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // 저장소를 못 쓰면 무시한다
+      }
       // H1의 분자, H2(선택 항목 입력률)의 원자료
       track("profile_complete", {
         confidence: profileConfidence(result.data),
