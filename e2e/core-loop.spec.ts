@@ -27,9 +27,10 @@ test("헤더가 현재 위치를 표시한다", async ({ page }) => {
   await expect(inactive).not.toHaveAttribute("aria-current", "page");
   expect((await inactive.locator("span").boundingBox())!.width).toBeLessThan(1);
 
-  // 서비스명이 메뉴를 밀어내지 않는다
-  const brand = page.getByRole("link", { name: /핏 데이터/ });
-  expect((await brand.boundingBox())!.width).toBeGreaterThan(50);
+  // 헤더 왼쪽은 홈 아이콘이다. 서비스명을 넣으면 메뉴를 밀어낸다.
+  const home = page.getByRole("link", { name: "홈" });
+  await expect(home).toBeVisible();
+  expect((await home.boundingBox())!.width).toBeGreaterThan(10);
 
   // 이동하면 활성 표시가 따라온다
   await page.getByRole("link", { name: "체형 입력" }).click();
@@ -50,6 +51,10 @@ test("로그인 없이 체형 입력부터 후기 작성까지", async ({ page }
   await expect(page.getByRole("heading", { name: "체형 입력" })).toBeVisible();
 
   await page.locator('input[type="text"]').fill(nickname);
+
+  // 성별은 필수다. 고르지 않으면 검증에서 막혀 다음 화면으로 넘어가지 않는다.
+  await page.getByRole("button", { name: "남성" }).click();
+
   const numbers = page.locator('input[type="number"]');
   await numbers.nth(0).fill("175"); // 키
   await numbers.nth(1).fill("82"); // 몸무게
