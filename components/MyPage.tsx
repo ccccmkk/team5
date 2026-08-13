@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FitScale } from "@/components/FitScale";
+import {
+  getIdentityState,
+  linkGoogle,
+  onIdentitySettled,
+  signInWithGoogle,
+  signOut,
+  type IdentityState,
+} from "@/lib/db/identity";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { deleteReview, getMyReviews } from "@/lib/db/reviews";
 import { profileConfidence, type FitPart, type FitReview } from "@/lib/fit-matching";
@@ -58,20 +66,66 @@ function MyPageSkeleton() {
 export function MyPage() {
   const [profile, setProfile] = useState<BodyProfile | null>(null);
   const [reviews, setReviews] = useState<FitReview[]>([]);
+  const [identity, setIdentity] = useState<IdentityState>({ kind: "none" });
   const [loaded, setLoaded] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     Promise.all([
       getMyProfile().catch(() => null),
       getMyReviews().catch(() => [] as FitReview[]),
+      getIdentityState().catch((): IdentityState => ({ kind: "none" })),
     ])
-      .then(([p, r]) => {
+      .then(([p, r, i]) => {
         setProfile(p);
         setReviews(r);
+        setIdentity(i);
       })
       .finally(() => setLoaded(true));
   }, []);
+
+  // 구글에서 돌아온 직후를 잡는다. 이유는 onIdentitySettled 주석에 있다.
+  useEffect(
+    () =>
+      onIdentitySettled(() => {
+        Promise.all([
+          getIdentityState().catch((): IdentityState => ({ kind: "none" })),
+          getMyReviews().catch(() => [] as FitReview[]),
+          getMyProfile().catch(() => null),
+        ]).then(([i, r, p]) => {
+          setIdentity(i);
+          setReviews(r);
+          setProfile(p);
+        });
+      }),
+    [],
+  );
+
+  /**
+   * 성공하면 구글로 떠났다가 이 페이지로 돌아온다. 그래서 성공 경로에는
+   * 상태를 되돌리는 코드가 없다 — 돌아오면 컴포넌트가 새로 뜬다.
+   */
+  async function handleAccount(action: () => Promise<void>) {
+    setFailure(null);
+    setLinking(true);
+    try {
+      await action();
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : "연결에 실패했습니다");
+      setLinking(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setFailure(null);
+    try {
+      await signOut();
+      window.location.reload();
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : "로그아웃에 실패했습니다");
+    }
+  }
 
   async function handleDelete(id: string) {
     setFailure(null);
@@ -201,10 +255,51 @@ export function MyPage() {
       <section>
         <h2 className="mb-4 text-sm font-semibold">기록 보관 범위</h2>
         <div className="border-line rounded-sm border p-5">
-          <p className="text-sm">
-            로그인 없이 이 브라우저에만 기록이 남습니다. 기기를 바꾸거나 브라우저
-            데이터를 지우면 위 내용에 접근할 수 없습니다.
-          </p>
+          {identity.kind === "linked" ? (
+            <>
+              <p className="text-sm">
+                구글 계정에 연결되어 있습니다
+                {identity.email && (
+                  <>
+                    {" — "}
+                    <span className="font-mono text-xs">{identity.email}</span>
+                  </>
+                )}
+                . 다른 기기에서 같은 계정으로 들어오면 위 기록이 그대로 보입니다.
+              </p>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="border-line mt-4 rounded-sm border px-4 py-2 text-sm font-medium"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm">
+                지금은 이 브라우저에만 기록이 남습니다. 기기를 바꾸거나 브라우저
+                데이터를 지우면 위 내용에 접근할 수 없습니다.
+              </p>
+              <p className="text-ink-muted mt-2 text-sm">
+                구글 계정을 연결하면 지금까지 남긴 기록이 그대로 따라옵니다. 새로
+                만드는 게 아니라 이 기록에 계정을 얹는 것이라 다시 입력할 필요가
+                없습니다.
+              </p>
+              <button
+                type="button"
+                disabled={linking}
+                onClick={() =>
+                  handleAccount(
+                    identity.kind === "anonymous" ? linkGoogle : signInWithGoogle,
+                  )
+                }
+                className="bg-ink text-surface mt-4 rounded-sm px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {linking ? "이동 중" : "구글 계정 연결"}
+              </button>
+            </>
+          )}
         </div>
       </section>
     </div>
