@@ -9,6 +9,52 @@ import { profileConfidence, type FitPart, type FitReview } from "@/lib/fit-match
 
 const FIT_PARTS: FitPart[] = ["waistFit", "thighFit", "hipFit", "lengthFit"];
 
+function SkeletonBlock({ className }: { className: string }) {
+  return <div aria-hidden="true" className={`bg-line animate-pulse rounded-sm ${className}`} />;
+}
+
+function MyPageSkeleton() {
+  return (
+    <div role="status" aria-label="내 정보를 불러오는 중" className="space-y-10">
+      <section>
+        <SkeletonBlock className="mb-4 h-4 w-16" />
+        <div className="border-line rounded-sm border p-5">
+          <SkeletonBlock className="h-5 w-20" />
+          <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex items-center justify-between gap-4">
+                <SkeletonBlock className="h-4 w-12" />
+                <SkeletonBlock className="h-4 w-14" />
+              </div>
+            ))}
+          </div>
+          <SkeletonBlock className="mt-5 h-3 w-28" />
+          <SkeletonBlock className="mt-4 h-10 w-16" />
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <SkeletonBlock className="h-4 w-16" />
+          <SkeletonBlock className="h-4 w-8" />
+        </div>
+        <div className="border-line rounded-sm border p-5">
+          <SkeletonBlock className="h-5 w-40" />
+          <SkeletonBlock className="mt-4 h-10 w-24" />
+        </div>
+      </section>
+
+      <section>
+        <SkeletonBlock className="mb-4 h-4 w-24" />
+        <div className="border-line rounded-sm border p-5">
+          <SkeletonBlock className="h-4 w-full" />
+          <SkeletonBlock className="mt-2 h-4 w-4/5" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function MyPage() {
   const [profile, setProfile] = useState<BodyProfile | null>(null);
   const [reviews, setReviews] = useState<FitReview[]>([]);
@@ -40,7 +86,7 @@ export function MyPage() {
   }
 
   if (!loaded) {
-    return <p className="text-ink-muted">불러오는 중</p>;
+    return <MyPageSkeleton />;
   }
 
   return (
