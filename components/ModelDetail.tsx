@@ -200,7 +200,7 @@ export function ModelDetail({
                 }
                 className="border-ink mt-4 block rounded-sm border py-3 text-center text-sm font-medium"
               >
-                {shopLabel(SHOP)}에서 {modelId} 보기
+                {shopLabel(SHOP)}에서 {modelId} {recommendation.size}인치 보기
               </a>
             </section>
           ) : (
