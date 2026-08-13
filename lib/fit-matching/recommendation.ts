@@ -7,6 +7,23 @@ export const MAX_CANDIDATES = 30;
 /** 이 비율 이상이 같은 부위를 지적하면 이슈로 노출한다 */
 export const ISSUE_THRESHOLD = 0.3;
 
+/**
+ * 한 사람이 산 사이즈는 추천이 아니라 일화다. 지지자가 이보다 적으면
+ * 사이즈를 내지 않고 데이터 부족으로 돌린다.
+ *
+ * 시드 605건 기준으로 지지자 수 중앙값이 2명이다. 3명으로 올리면 절반 이상이
+ * 추천을 못 받아 서비스가 성립하지 않아서 2로 뒀다. 후기가 쌓이면 올린다.
+ */
+export const MIN_SUPPORT = 2;
+
+/**
+ * 지지자가 2명일 때 1명이 지적하면 50%라 ISSUE_THRESHOLD를 그냥 넘는다.
+ * 그 경고는 정보가 아니라 잡음이므로, 표본이 이만큼은 돼야 경고를 낸다.
+ */
+export const MIN_ISSUE_SUPPORTERS = 3;
+/** 비율을 넘겨도 최소 이 인원이 같은 말을 해야 한다 */
+export const MIN_ISSUE_COUNT = 2;
+
 const FIT_PARTS: FitPart[] = ["waistFit", "thighFit", "hipFit", "lengthFit"];
 
 export type FitIssue = {
@@ -37,7 +54,8 @@ function satisfactionFactor(overall: number): number {
 }
 
 function collectIssues(supporters: RankedReview[]): FitIssue[] {
-  if (supporters.length === 0) return [];
+  // 표본이 얇으면 비율이 쉽게 튄다. 2명 중 1명은 50%지만 아무 뜻도 없다.
+  if (supporters.length < MIN_ISSUE_SUPPORTERS) return [];
 
   const issues: FitIssue[] = [];
   for (const part of FIT_PARTS) {
@@ -46,7 +64,10 @@ function collectIssues(supporters: RankedReview[]): FitIssue[] {
         direction === "tight" ? r[part] <= -2 : r[part] >= 2,
       ).length;
 
-      if (count > 0 && count / supporters.length >= ISSUE_THRESHOLD) {
+      if (
+        count >= MIN_ISSUE_COUNT &&
+        count / supporters.length >= ISSUE_THRESHOLD
+      ) {
         issues.push({ part, direction, count, total: supporters.length });
       }
     }
@@ -99,6 +120,11 @@ export function recommendSize(
     (r) =>
       r.purchasedSize === winner.size && satisfactionFactor(r.overall) > 0,
   );
+
+  // 한 사람의 구매 이력을 추천으로 포장하지 않는다
+  if (supporters.length < MIN_SUPPORT) {
+    return { status: "insufficient_data", totalCount: ranked.length };
+  }
 
   return {
     status: "ok",
