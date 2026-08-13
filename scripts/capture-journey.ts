@@ -66,6 +66,15 @@ async function main() {
     await fillProfile(page);
     await shoot(page, "/models/501", `${label}-${device}-detail.png`);
 
+    // /me는 아래쪽(계정 연결)이 핵심이라 전체를 담는다
+    await page.goto(`${BASE}/me`);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: `${OUT}/${label}-${device}-me.png`,
+      fullPage: true,
+    });
+    console.log(`  ${label}-${device}-me.png`);
+
     await context.close();
   }
 
