@@ -585,8 +585,16 @@ E2E는 하나만 둔다. 팀 프로젝트에서 E2E를 늘리면 관리 비용�
 | H2 | 선택 항목까지 입력할 의향이 있다 | 선택 항목 입력률 = confidence ≥ 0.85 비율 | `profile_complete`의 `confidence` 파라미터 | 30% |
 | H3 | 유사도 정렬이 실제로 도움이 된다 | `view_model`을 `has_profile`로 나눈 평균 체류시간 | GA4 참여도 | 프로필 보유자가 더 김 |
 | H4 | 조회만 하지 않고 기여도 한다 | 후기 작성 전환율 = `review_submit` / 프로필 보유자 | GA4 퍼널 | 15% |
+| H5 | 추천을 신뢰해 실제 구매로 넘어간다 | 구매 이탈률 = `outbound_click` / `view_recommendation` | GA4 퍼널 | 25% |
 
 H1·H2는 §13에 적은 핵심 리스크("사람들이 몸 정보를 입력해줄지 미검증")를 직접 겨냥한다.
+
+**H5는 표본이 얇을 때의 보험이다.** 초기 트래픽이 수십 명 수준이면 H4는 읽을 수가 없다.
+후기 작성은 허들이 높아 전환율이 낮은데, 분모가 20이면 한 명 차이로 5%p가 움직여
+노이즈가 신호보다 커진다. 링크 클릭은 허들이 낮아 같은 표본에서도 비율이 덜 흔들린다.
+
+H5는 "추천이 믿을 만했는가"의 대리 지표이기도 하다. 사이즈를 보고 사러 나갔다는 것은
+그 숫자를 신뢰했다는 뜻이다. 체류시간(H3)보다 직접적이다.
 
 ### 15.2 커스텀 이벤트
 
@@ -597,6 +605,7 @@ H1·H2는 §13에 적은 핵심 리스크("사람들이 몸 정보를 입력해�
 | `view_recommendation` | `model_id`, `recommended_size`, `support_count` |
 | `review_start` / `review_submit` | `model_id`, `purchased_size` |
 | `empty_state_shown` | `reason` (§11.2의 4가지 중 하나) |
+| `outbound_click` | `model_id`, `size`, `destination` |
 
 `empty_state_shown`이 콜드스타트 진단의 핵심이다. 어떤 빈 화면이 얼마나 뜨는지가 곧 다음 가설의 근거가 된다.
 
