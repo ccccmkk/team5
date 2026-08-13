@@ -3,7 +3,8 @@ import { listModels } from "@/lib/sizing";
 
 export const metadata = {
   title: "모델 고르기",
-  description: "리바이스 501과 517의 실착 핏 데이터를 봅니다.",
+  description:
+    "리바이스 501·502·505·511·512·514·517·527·550·559·560·569의 실착 핏 데이터를 봅니다.",
 };
 
 export default function ModelsPage() {
@@ -16,13 +17,16 @@ export default function ModelsPage() {
           <li key={model.id}>
             <Link
               href={`/models/${model.id}`}
-              className="hover:bg-surface-alt flex items-baseline gap-4 py-5"
+              className="hover:bg-surface-alt flex items-center gap-5 py-5"
             >
-              <span className="tnum font-mono text-xl font-semibold">
+              <span className="tnum w-24 shrink-0 font-mono text-4xl font-semibold tracking-tight">
                 {model.id}
               </span>
-              <span className="flex-1">
-                <span className="block font-medium">{model.name}</span>
+              <span className="min-w-0 flex-1">
+                {/* 번호는 왼쪽에 크게 서 있다. 이름에서 한 번 더 반복하지 않는다. */}
+                <span className="block font-medium">
+                  {model.name.replace(`${model.id} `, "")}
+                </span>
                 <span className="text-ink-muted block text-sm">
                   {model.description}
                 </span>

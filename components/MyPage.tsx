@@ -9,8 +9,6 @@ import { profileConfidence, type FitPart, type FitReview } from "@/lib/fit-match
 
 const FIT_PARTS: FitPart[] = ["waistFit", "thighFit", "hipFit", "lengthFit"];
 
-const MOCK_PROVIDERS = ["구글", "카카오"];
-
 export function MyPage() {
   const [profile, setProfile] = useState<BodyProfile | null>(null);
   const [reviews, setReviews] = useState<FitReview[]>([]);
@@ -155,27 +153,11 @@ export function MyPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-sm font-semibold">계정 연결</h2>
+        <h2 className="mb-4 text-sm font-semibold">기록 보관 범위</h2>
         <div className="border-line rounded-sm border p-5">
           <p className="text-sm">
-            지금은 로그인 없이 이 브라우저에만 기록이 남습니다. 기기를 바꾸거나
-            브라우저 데이터를 지우면 위 내용에 접근할 수 없습니다.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {MOCK_PROVIDERS.map((name) => (
-              <button
-                key={name}
-                type="button"
-                disabled
-                className="border-line text-ink-muted cursor-not-allowed rounded-sm border px-4 py-2 text-sm"
-              >
-                {name} 계정 연결
-              </button>
-            ))}
-          </div>
-          <p className="text-ink-muted mt-3 text-xs">
-            계정 연결은 준비 중입니다. 연결하면 다른 기기에서도 같은 기록을 볼 수
-            있게 됩니다.
+            로그인 없이 이 브라우저에만 기록이 남습니다. 기기를 바꾸거나 브라우저
+            데이터를 지우면 위 내용에 접근할 수 없습니다.
           </p>
         </div>
       </section>

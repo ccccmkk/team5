@@ -20,6 +20,27 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * 디스플레이 티어. 이 티어와 본문(16px) 사이에 중간 단계를 두지 않는다.
+ * 큰 제목과 조용한 UI만 남기면 "위는 간판, 아래는 표"로 읽힌다.
+ */
+.display {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  /* 한글은 라틴만큼 줄간을 좁히면 받침이 윗줄에 닿는다 */
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+/* 모델 번호 전용. 숫자 자체가 이 서비스의 간판이라 가장 크게 세운다. */
+.display-num {
+  font-size: clamp(3.5rem, 14vw, 7rem);
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 경로가 바뀔 때 짧게 밀려 올라온다. 이동했다는 감각을 준다. */
 @keyframes page-enter {
   from {
