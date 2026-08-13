@@ -117,7 +117,12 @@ export function ModelDetail({
       ) : recommendation?.status === "ok" ? (
         <section className="border-ink rounded-sm border p-5">
           <div className="flex items-baseline gap-3">
-            <span className="tnum bg-accent rounded-sm px-2 font-mono text-3xl font-bold">
+            {/*
+              accent는 눈금자의 "내 위치" 마커가 독점한다 (MeasureBar 참고).
+              여기까지 형광을 쓰면 한 화면에 세 번 나와 브랜드 가이드의
+              "화면당 1~2회"를 넘긴다. 크기와 반전만으로도 충분히 눈에 띈다.
+            */}
+            <span className="tnum bg-ink text-surface rounded-sm px-2 font-mono text-3xl font-bold">
               {recommendation.size}
             </span>
             <span className="text-ink-muted text-sm">

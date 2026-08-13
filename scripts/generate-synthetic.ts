@@ -48,23 +48,48 @@ const BODY_BY_GENDER: Record<
 
 export type SyntheticReview = Omit<FitReview, "id">;
 
-const NICKNAME_HEADS = [
-  "조용한",
-  "느긋한",
-  "바쁜",
-  "단단한",
-  "무던한",
-  "성실한",
-  "꼼꼼한",
+/*
+ * 닉네임은 커머스 후기에서 실제로 보이는 "마스킹된 아이디" 모양으로 만든다.
+ * 형용사+동물 조합("느긋한수달")은 조합 수가 적어 605건에서 심하게 반복되고,
+ * 무엇보다 자동 생성 티가 그대로 난다.
+ *
+ * 마스킹은 그럴듯함 때문만이 아니다. 시드는 가짜지만 실제 후기에 붙는 닉네임과
+ * 같은 자리에 나오므로, 처음부터 사람을 특정할 수 없는 모양으로 두는 게 맞다.
+ */
+const SURNAMES = [
+  "김",
+  "이",
+  "박",
+  "최",
+  "정",
+  "강",
+  "조",
+  "윤",
+  "장",
+  "임",
+  "한",
+  "오",
+  "서",
+  "신",
+  "권",
 ];
-const NICKNAME_TAILS = [
-  "수달",
-  "오리",
-  "고래",
-  "두더지",
-  "너구리",
-  "올빼미",
-  "거북",
+
+const ID_STEMS = [
+  "min",
+  "jun",
+  "hyun",
+  "seo",
+  "woo",
+  "yeon",
+  "jin",
+  "hoon",
+  "dae",
+  "sun",
+  "young",
+  "chan",
+  "bin",
+  "rae",
+  "sol",
 ];
 
 const COMMENTS_BY_ISSUE: Record<string, string[]> = {
@@ -100,8 +125,25 @@ export function nearestSizeRow(sizes: SizeRow[], waistInch: number): SizeRow {
   );
 }
 
+/** DB 제약과 같은 2~12자를 지킨다 */
 function makeNickname(random: () => number): string {
-  return `${pick(random, NICKNAME_HEADS)}${pick(random, NICKNAME_TAILS)}`;
+  const roll = random();
+
+  // 김**  — 한국 커머스에서 가장 흔한 표기
+  if (roll < 0.45) {
+    return `${pick(random, SURNAMES)}**`;
+  }
+
+  // minj**23 — 영문 아이디 일부 마스킹
+  if (roll < 0.8) {
+    const stem = pick(random, ID_STEMS);
+    const digits = Math.floor(random() * 100);
+    return `${stem}**${digits}`;
+  }
+
+  // j**5 — 짧은 아이디
+  const initial = pick(random, ID_STEMS)[0];
+  return `${initial}**${Math.floor(random() * 10)}`;
 }
 
 export function generateSyntheticReviews(options: {
