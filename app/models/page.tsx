@@ -3,7 +3,8 @@ import { listModels } from "@/lib/sizing";
 
 export const metadata = {
   title: "모델 고르기",
-  description: "리바이스 501과 517의 실착 핏 데이터를 봅니다.",
+  description:
+    "리바이스 데님 12종의 실착 핏 데이터. 슬림·스트레이트·부츠컷·릴랙스드 중 내 체형에 맞는 모델을 고릅니다.",
 };
 
 export default function ModelsPage() {
