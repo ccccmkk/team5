@@ -34,8 +34,9 @@ jobs:
           # 빌드 산출물은 공개되므로 RLS를 우회하는 키가 번들에 섞이면 안 된다.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          # GA4 측정 ID. 모든 페이지 HTML에 그대로 실려 나가는 공개 값이라
-          # 비밀이 아니지만, 다른 빌드 설정과 한자리에 모아 두려고 변수에 둔다.
+          # 측정 ID의 기본값은 lib/brand.ts에 있다 (공개 값이라 숨길 이유가 없고,
+          # 저장소 변수는 admin만 만들 수 있어 팀원 대부분이 손댈 수 없다).
+          # 다른 속성으로 측정해 보려면 이 변수를 만들면 그쪽이 우선한다.
           NEXT_PUBLIC_GA_ID: ${{ vars.GA_MEASUREMENT_ID }}
 
       # 측정 ID가 없으면 GA 스크립트가 조용히 빠진 채로 배포된다.

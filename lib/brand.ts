@@ -16,3 +16,13 @@ export const SERVICE_TAGLINE =
  * 커스텀 도메인으로 옮기면 여기와 next.config.ts의 basePath를 함께 고친다.
  */
 export const SITE_URL = "https://ccccmkk.github.io/team5";
+
+/**
+ * GA4 측정 ID. 모든 페이지 HTML에 그대로 실려 나가는 공개 값이라 비밀이 아니다.
+ * (브라우저에서 개발자도구를 열면 어느 사이트든 보이는 종류의 값이다.)
+ *
+ * 소스에 두는 이유: 저장소 변수/시크릿 등록은 admin 권한이 필요한데 팀원 대부분은
+ * collaborator라 손댈 수 없다. 값이 공개라 숨겨서 얻는 것도 없으므로, 아무나
+ * 고칠 수 있는 곳에 둔다. NEXT_PUBLIC_GA_ID를 주면 그쪽이 우선한다.
+ */
+export const GA_MEASUREMENT_ID = "G-SYK7MN1BHR";
