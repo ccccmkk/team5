@@ -5,7 +5,7 @@
  * 상표 문제로 서비스명에 "리바이스"를 넣지 않는다. 대상 제품은
  * "리바이스 501·517" 형태로 지칭만 한다.
  */
-export const SERVICE_NAME = "리바이스 501·517 핏 데이터";
+export const SERVICE_NAME = "리바이스 사이즈 핏 정보(가칭)";
 
 export const SERVICE_TAGLINE =
   "나와 비슷한 체형인 사람들이 실제로 입어본 결과로 사이즈를 고릅니다.";

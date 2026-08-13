@@ -4,6 +4,7 @@ import type { SyntheticReview } from "./generate-synthetic";
 
 const COLUMNS = [
   "nickname",
+  "gender",
   "heightCm",
   "weightKg",
   "waistInch",
@@ -56,12 +57,16 @@ export function parseSeedCsv(raw: string): SyntheticReview[] {
     const get = (name: (typeof COLUMNS)[number]) =>
       cells[COLUMNS.indexOf(name)] ?? "";
 
+    const rawGender = get("gender").trim();
     const snapshot: ReviewSnapshot = {
       nickname: get("nickname").trim(),
       heightCm: Number(get("heightCm")),
       weightKg: Number(get("weightKg")),
       waistInch: Number(get("waistInch")),
     };
+    if (rawGender === "male" || rawGender === "female") {
+      snapshot.gender = rawGender;
+    }
 
     const thighCm = optionalNumber(get("thighCm"));
     const hipCm = optionalNumber(get("hipCm"));

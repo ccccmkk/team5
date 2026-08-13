@@ -9,6 +9,7 @@ import { track, type EmptyStateReason } from "@/lib/analytics/track";
 import { getMyProfile, type BodyProfile } from "@/lib/db/profile";
 import { getReviews } from "@/lib/db/reviews";
 import {
+  filterByGender,
   rankReviews,
   recommendSize,
   type FitPart,
@@ -48,10 +49,14 @@ export function ModelDetail({
     };
   }, [modelId, initialReviews]);
 
+  // 같은 성별끼리만 비교한다. 표본이 부족하면 자동으로 필터가 풀린다.
+  const genderFilter = filterByGender(profile?.gender, reviews);
+  const compared = genderFilter.reviews;
+
   // 프로필이 없으면 프리렌더된 최신순 그대로 보여준다. 빈 화면을 주지 않는다.
   const ranked: RankedReview[] = profile
-    ? rankReviews(profile, reviews)
-    : reviews.map((r) => ({
+    ? rankReviews(profile, compared)
+    : compared.map((r) => ({
         ...r,
         similarity: { score: 0, confidence: 0, usedFields: [] },
       }));
@@ -88,7 +93,7 @@ export function ModelDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, modelId, profile, reviews.length]);
 
-  const thighValues = reviews
+  const thighValues = compared
     .map((r) => r.snapshot.thighCm)
     .filter((v): v is number => v !== undefined);
 
@@ -143,13 +148,22 @@ export function ModelDetail({
         </section>
       )}
 
-      {reviews.length > 0 && (
+      {compared.length > 0 && (
         <section className="space-y-5">
-          <h2 className="text-sm font-semibold">후기 작성자 체형 분포</h2>
+          <h2 className="flex items-baseline justify-between text-sm font-semibold">
+            <span>후기 작성자 체형 분포</span>
+            <span className="text-ink-muted font-normal">
+              {genderFilter.sameGenderOnly
+                ? profile?.gender === "female"
+                  ? "여성만"
+                  : "남성만"
+                : "전체"}
+            </span>
+          </h2>
           <MeasureBar
             label="허리"
             unit="인치"
-            others={reviews.map((r) => r.snapshot.waistInch)}
+            others={compared.map((r) => r.snapshot.waistInch)}
             mine={profile?.waistInch}
           />
           {thighValues.length > 0 && (
@@ -164,14 +178,22 @@ export function ModelDetail({
       )}
 
       <section>
-        <h2 className="mb-4 flex items-baseline justify-between text-sm font-semibold">
+        <h2 className="mb-2 flex items-baseline justify-between text-sm font-semibold">
           <span>{profile ? "나와 비슷한 순" : "최신순"}</span>
           <span className="text-ink-muted tnum font-mono font-normal">
-            {reviews.length}건{!loaded && " (갱신 중)"}
+            {compared.length}건{!loaded && " (갱신 중)"}
           </span>
         </h2>
 
-        {reviews.length === 0 ? (
+        {/* 성별 필터가 풀렸으면 그 사실을 숨기지 않는다 */}
+        {profile?.gender && !genderFilter.sameGenderOnly && (
+          <p className="text-ink-muted mb-4 text-sm">
+            같은 성별 후기가 {genderFilter.sameGenderCount}건뿐이라 전체를 함께
+            보여줍니다. 체형 분포가 넓어 유사도가 낮게 나올 수 있습니다.
+          </p>
+        )}
+
+        {compared.length === 0 ? (
           <div className="border-line rounded-sm border p-5">
             <p className="font-medium">아직 후기가 없습니다.</p>
             <Link

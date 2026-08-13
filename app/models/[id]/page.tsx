@@ -4,15 +4,11 @@ import { SITE_URL } from "@/lib/brand";
 import { createBuildClient } from "@/lib/db/client";
 import { getReviews } from "@/lib/db/reviews";
 import type { FitReview } from "@/lib/fit-matching";
-import { MODEL_IDS, getModel, type ModelId } from "@/lib/sizing";
+import { MODEL_IDS, getModel, isModelId } from "@/lib/sizing";
 import { buildProductJsonLd } from "@/lib/view/jsonld";
 
 export function generateStaticParams() {
   return MODEL_IDS.map((id) => ({ id }));
-}
-
-function isModelId(value: string): value is ModelId {
-  return (MODEL_IDS as string[]).includes(value);
 }
 
 export async function generateMetadata({
@@ -55,8 +51,14 @@ export default async function ModelPage({
   let reviews: FitReview[] = [];
   try {
     reviews = await getReviews(id, createBuildClient());
-  } catch {
-    // 빌드 환경에 자격증명이 없으면 빈 상태로 굽고 런타임에 채운다
+    console.log(`[prerender] ${id}: 후기 ${reviews.length}건`);
+  } catch (error) {
+    // 자격증명이 없는 환경에서는 빈 상태로 굽고 런타임에 채운다.
+    // 다만 조용히 넘어가면 프리렌더가 비어도 알 수 없으므로 반드시 남긴다.
+    console.warn(
+      `[prerender] ${id}: 후기를 가져오지 못했습니다 —`,
+      error instanceof Error ? error.message : error,
+    );
   }
 
   const jsonLd = buildProductJsonLd(

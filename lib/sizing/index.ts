@@ -2,16 +2,22 @@ import { MODELS } from "@/data/models";
 import type { JeanModel, ModelId, SizeRow } from "./types";
 
 export type {
+  FitType,
   JeanModel,
   ModelId,
   SizeChart,
   SizeRow,
 } from "./types";
 
-export const MODEL_IDS: ModelId[] = ["501", "517"];
+/** 모델 목록에서 유도한다. 모델을 추가할 때 여기를 따로 고칠 필요가 없다. */
+export const MODEL_IDS: ModelId[] = MODELS.map((m) => m.id);
 
 export function listModels(): JeanModel[] {
   return MODELS;
+}
+
+export function isModelId(value: string): value is ModelId {
+  return (MODEL_IDS as string[]).includes(value);
 }
 
 export function getModel(id: ModelId): JeanModel {

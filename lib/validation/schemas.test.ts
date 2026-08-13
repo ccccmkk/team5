@@ -3,6 +3,7 @@ import { bodyProfileSchema, fitReviewSchema } from "@/lib/validation/schemas";
 
 const VALID_PROFILE = {
   nickname: "테스터",
+  gender: "male",
   heightCm: "175",
   weightKg: "70",
   waistInch: "32",
@@ -67,6 +68,25 @@ describe("bodyProfileSchema", () => {
       bodyProfileSchema.safeParse({ ...VALID_PROFILE, waistInch: "" }).success,
     ).toBe(false);
   });
+
+  it("성별을 안 고르면 거부한다", () => {
+    const withoutGender: Record<string, string> = { ...VALID_PROFILE };
+    delete withoutGender.gender;
+    expect(bodyProfileSchema.safeParse(withoutGender).success).toBe(false);
+    expect(
+      bodyProfileSchema.safeParse({ ...VALID_PROFILE, gender: "" }).success,
+    ).toBe(false);
+  });
+
+  it("아는 성별 값만 통과시킨다", () => {
+    expect(
+      bodyProfileSchema.safeParse({ ...VALID_PROFILE, gender: "female" })
+        .success,
+    ).toBe(true);
+    expect(
+      bodyProfileSchema.safeParse({ ...VALID_PROFILE, gender: "기타" }).success,
+    ).toBe(false);
+  });
 });
 
 const VALID_REVIEW = {
@@ -97,6 +117,14 @@ describe("fitReviewSchema", () => {
     expect(
       fitReviewSchema.safeParse({ ...VALID_REVIEW, modelId: "999" }).success,
     ).toBe(false);
+  });
+
+  it("새로 추가된 모델도 통과시킨다", () => {
+    for (const id of ["511", "550", "569"]) {
+      expect(
+        fitReviewSchema.safeParse({ ...VALID_REVIEW, modelId: id }).success,
+      ).toBe(true);
+    }
   });
 
   it("한줄평이 없으면 빈 문자열이 된다", () => {

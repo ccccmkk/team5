@@ -1,8 +1,4 @@
-import type {
-  BodyMeasurements,
-  FitReview,
-  ReviewSnapshot,
-} from "@/lib/fit-matching";
+import type { FitReview, Gender, ReviewSnapshot } from "@/lib/fit-matching";
 
 export type FitReviewRow = {
   id: string;
@@ -22,6 +18,7 @@ export type FitReviewRow = {
 export type BodyProfileRow = {
   user_id: string;
   nickname: string;
+  gender: Gender | null;
   height_cm: number;
   weight_kg: number;
   waist_inch: number;
@@ -30,7 +27,8 @@ export type BodyProfileRow = {
   inseam_cm: number | null;
 };
 
-export type BodyProfile = BodyMeasurements & { nickname: string };
+/** 후기의 snapshot과 같은 모양이라 그대로 넘길 수 있다 */
+export type BodyProfile = ReviewSnapshot;
 
 export function toFitReview(row: FitReviewRow): FitReview {
   return {
@@ -52,6 +50,7 @@ export function toFitReview(row: FitReviewRow): FitReview {
 export function toBodyProfile(row: BodyProfileRow): BodyProfile {
   return {
     nickname: row.nickname,
+    gender: row.gender ?? undefined,
     heightCm: row.height_cm,
     weightKg: row.weight_kg,
     waistInch: row.waist_inch,
@@ -68,6 +67,7 @@ export function toProfileRow(
   return {
     user_id: userId,
     nickname: profile.nickname,
+    gender: profile.gender ?? null,
     height_cm: profile.heightCm,
     weight_kg: profile.weightKg,
     waist_inch: profile.waistInch,

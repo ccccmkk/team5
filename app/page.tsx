@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { SERVICE_TAGLINE } from "@/lib/brand";
+import { SERVICE_NAME, SERVICE_TAGLINE } from "@/lib/brand";
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
+      <p className="border-line text-ink-muted mb-8 border-b pb-4 text-sm font-semibold tracking-tight">
+        {SERVICE_NAME}
+      </p>
+
       <h1 className="text-3xl leading-snug font-bold tracking-tight">
         같은 32인치인데
         <br />왜 나한테만 안 맞을까

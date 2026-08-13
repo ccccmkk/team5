@@ -4,6 +4,8 @@ export {
   TOTAL_WEIGHT,
 } from "./config";
 export { profileConfidence, similarity } from "./similarity";
+export { MIN_SAME_GENDER, filterByGender } from "./gender";
+export type { GenderFilterResult } from "./gender";
 export { rankReviews } from "./ranking";
 export {
   ISSUE_THRESHOLD,
@@ -16,6 +18,7 @@ export type {
   BodyMeasurements,
   FitPart,
   FitReview,
+  Gender,
   MeasurementField,
   RankedReview,
   ReviewSnapshot,

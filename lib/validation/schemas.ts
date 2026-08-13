@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MODEL_IDS } from "@/lib/sizing";
 
 /**
  * 폼에서 오는 문자열을 숫자로 바꾼다. 빈 값은 undefined가 되고,
@@ -30,6 +31,8 @@ export const bodyProfileSchema = z.object({
     .trim()
     .min(2, "2자 이상이어야 합니다")
     .max(12, "12자 이하여야 합니다"),
+  // 성별은 치수가 아니라 비교 대상을 거르는 필터로 쓴다
+  gender: z.enum(["male", "female"], { message: "성별을 선택해 주세요" }),
   heightCm: requiredInt(120, 220),
   weightKg: requiredInt(30, 200),
   waistInch: requiredInt(22, 46),
@@ -43,7 +46,8 @@ export type BodyProfileInput = z.infer<typeof bodyProfileSchema>;
 const fitLevel = requiredInt(-2, 2);
 
 export const fitReviewSchema = z.object({
-  modelId: z.enum(["501", "517"]),
+  // 모델 목록에서 유도한다. 모델을 추가해도 여기를 따로 고칠 필요가 없다.
+  modelId: z.enum(MODEL_IDS as [string, ...string[]]),
   purchasedSize: requiredInt(22, 46),
   waistFit: fitLevel,
   thighFit: fitLevel,

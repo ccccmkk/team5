@@ -7,8 +7,12 @@ import { getMyProfile, upsertMyProfile } from "@/lib/db/profile";
 import { profileConfidence } from "@/lib/fit-matching";
 import { bodyProfileSchema } from "@/lib/validation/schemas";
 
-const REQUIRED = [
-  { name: "nickname", label: "닉네임", unit: "", type: "text" },
+const GENDERS = [
+  { value: "male", label: "남성" },
+  { value: "female", label: "여성" },
+] as const;
+
+const MEASURE_FIELDS = [
   { name: "heightCm", label: "키", unit: "cm", type: "number" },
   { name: "weightKg", label: "몸무게", unit: "kg", type: "number" },
   {
@@ -48,6 +52,7 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
         if (!profile) return;
         setValues({
           nickname: profile.nickname,
+          gender: profile.gender ?? "",
           heightCm: String(profile.heightCm),
           weightKg: String(profile.weightKg),
           waistInch: String(profile.waistInch),
@@ -129,7 +134,41 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
     <form onSubmit={handleSubmit} className="space-y-8">
       <section className="space-y-4">
         <h2 className="text-sm font-semibold">필수</h2>
-        {REQUIRED.map((f) => field(f.name, f.label, f.unit, f.type))}
+
+        {field("nickname", "닉네임", "", "text")}
+
+        <div>
+          <span className="text-ink-muted text-sm">성별</span>
+          <div className="mt-1 flex gap-px">
+            {GENDERS.map(({ value, label }) => {
+              const active = values.gender === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setValues({ ...values, gender: value })}
+                  className={`flex-1 rounded-sm border py-2 text-sm ${
+                    active
+                      ? "bg-ink text-surface border-ink"
+                      : "border-line bg-surface"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {errors.gender && (
+            <span className="text-warn mt-1 block text-sm">
+              {errors.gender}
+            </span>
+          )}
+          <p className="text-ink-muted mt-2 text-sm">
+            같은 성별인 사람들과만 비교합니다. 섞으면 체형 분포가 너무 넓어집니다.
+          </p>
+        </div>
+
+        {MEASURE_FIELDS.map((f) => field(f.name, f.label, f.unit, f.type))}
         <p className="text-ink-muted text-sm">
           줄자 대신 평소 입는 청바지 사이즈를 적습니다.
         </p>

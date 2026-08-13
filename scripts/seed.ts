@@ -6,7 +6,9 @@ import {
 } from "./generate-synthetic";
 import { readSeedCsv } from "./read-csv";
 
-const SYNTHETIC_COUNT = 250;
+// 모델 12개 × 성별 2로 나뉘므로 모델당 성별당 25건쯤 되도록 잡는다.
+// 이보다 적으면 성별 필터를 켰을 때 추천 후보가 부족해진다.
+const SYNTHETIC_COUNT = 600;
 const SYNTHETIC_SEED = 20260812;
 const CSV_PATH = "data/seed-reviews.csv";
 

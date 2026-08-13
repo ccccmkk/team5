@@ -74,10 +74,27 @@ describe("toProfileRow", () => {
 });
 
 describe("toBodyProfile", () => {
+  it("성별이 없는 옛 행도 읽는다", () => {
+    const profile = toBodyProfile({
+      user_id: "user-1",
+      nickname: "테스터",
+      gender: null,
+      height_cm: 175,
+      weight_kg: 70,
+      waist_inch: 32,
+      thigh_cm: null,
+      hip_cm: null,
+      inseam_cm: null,
+    });
+
+    expect(profile.gender).toBeUndefined();
+  });
+
   it("null 선택 항목을 undefined로 바꾼다", () => {
     const profile = toBodyProfile({
       user_id: "user-1",
       nickname: "테스터",
+      gender: "male",
       height_cm: 175,
       weight_kg: 70,
       waist_inch: 32,
@@ -88,6 +105,7 @@ describe("toBodyProfile", () => {
 
     expect(profile).toEqual({
       nickname: "테스터",
+      gender: "male",
       heightCm: 175,
       weightKg: 70,
       waistInch: 32,
@@ -100,6 +118,7 @@ describe("toBodyProfile", () => {
   it("toProfileRow와 왕복해도 값이 보존된다", () => {
     const original = {
       nickname: "테스터",
+      gender: "female" as const,
       heightCm: 175,
       weightKg: 70,
       waistInch: 32,

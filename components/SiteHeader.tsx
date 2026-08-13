@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SERVICE_NAME } from "@/lib/brand";
 
 const NAV = [
   { href: "/models", label: "모델" },
@@ -22,12 +21,30 @@ export function SiteHeader() {
   return (
     <header className="border-line bg-surface sticky top-0 z-10 border-b">
       <nav className="mx-auto flex max-w-2xl items-center gap-6 px-6">
-        {/* 좁아지면 서비스명이 줄어든다. 메뉴는 항상 읽을 수 있어야 한다. */}
+        {/* 제목은 랜딩 상단에 있다. 헤더에서는 홈으로 돌아가는 아이콘만 둔다. */}
         <Link
           href="/"
-          className="hover:text-ink-muted min-w-0 flex-1 truncate py-4 text-sm font-semibold transition-colors duration-150 active:opacity-60"
+          aria-label="홈"
+          title="홈"
+          className={`hover:text-ink -ml-1 flex-1 py-4 transition-colors duration-150 active:opacity-60 ${
+            pathname.replace(/\/$/, "") === "" ? "text-ink" : "text-ink-muted"
+          }`}
         >
-          {SERVICE_NAME}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+            aria-hidden="true"
+          >
+            <path d="M3 10.5 12 3.5l9 7" />
+            <path d="M5.5 9.5V20h13V9.5" />
+            <path d="M10 20v-5.5h4V20" />
+          </svg>
         </Link>
 
         <ul className="flex shrink-0 gap-5">

@@ -19,7 +19,16 @@ export type SimilarityResult = {
 
 export type FitPart = "waistFit" | "thighFit" | "hipFit" | "lengthFit";
 
-export type ReviewSnapshot = BodyMeasurements & { nickname: string };
+export type Gender = "male" | "female";
+
+/**
+ * 성별은 치수가 아니라 범주라 유사도 계산에 가중치로 넣지 않는다.
+ * 대신 비교 대상을 거르는 필터로 쓴다 (lib/fit-matching/gender.ts).
+ */
+export type ReviewSnapshot = BodyMeasurements & {
+  nickname: string;
+  gender?: Gender;
+};
 
 export type FitReview = {
   id: string;

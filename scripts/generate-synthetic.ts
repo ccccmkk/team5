@@ -1,6 +1,50 @@
-import type { FitReview, ReviewSnapshot } from "@/lib/fit-matching";
+import type { FitReview, Gender, ReviewSnapshot } from "@/lib/fit-matching";
 import { getModel, listModels, type ModelId, type SizeRow } from "@/lib/sizing";
 import { clampInt, createRandom, normal, pick } from "./random";
+
+/**
+ * 성별에 따라 체형 분포가 다르다. 한 분포에서 뽑으면
+ * "나와 비슷한 사람"의 범위가 지나치게 넓어진다 (팀 피드백).
+ */
+const BODY_BY_GENDER: Record<
+  Gender,
+  {
+    heightMean: number;
+    heightSd: number;
+    heightRange: [number, number];
+    /** 몸무게 = (키 - 100) × 이 계수 */
+    weightFactor: number;
+    /** 허리 인치 = 기준 + (몸무게 - 기준몸무게) × 0.22 */
+    waistBase: number;
+    waistPivot: number;
+    waistRange: [number, number];
+    thighFactor: number;
+    hipFactor: number;
+  }
+> = {
+  male: {
+    heightMean: 173,
+    heightSd: 6,
+    heightRange: [155, 195],
+    weightFactor: 0.95,
+    waistBase: 26,
+    waistPivot: 60,
+    waistRange: [26, 40],
+    thighFactor: 0.72,
+    hipFactor: 1.28,
+  },
+  female: {
+    heightMean: 160,
+    heightSd: 5.5,
+    heightRange: [145, 180],
+    weightFactor: 0.85,
+    waistBase: 24,
+    waistPivot: 50,
+    waistRange: [23, 36],
+    thighFactor: 0.78,
+    hipFactor: 1.42,
+  },
+};
 
 export type SyntheticReview = Omit<FitReview, "id">;
 
@@ -69,33 +113,40 @@ export function generateSyntheticReviews(options: {
   const reviews: SyntheticReview[] = [];
 
   for (let i = 0; i < options.count; i += 1) {
+    const gender: Gender = random() < 0.55 ? "male" : "female";
+    const g = BODY_BY_GENDER[gender];
+
     // 한국 성인 분포에 가깝게, 상관관계를 유지해 샘플링한다
-    const heightCm = clampInt(normal(random, 173, 6), 150, 195);
+    const heightCm = clampInt(
+      normal(random, g.heightMean, g.heightSd),
+      g.heightRange[0],
+      g.heightRange[1],
+    );
     const weightKg = clampInt(
-      normal(random, (heightCm - 100) * 0.95, 8),
-      45,
+      normal(random, (heightCm - 100) * g.weightFactor, 7),
+      35,
       120,
     );
     // 허리를 몸무게의 결정함수로 두면 "같은 몸무게, 다른 허리"인 사람이 사라져
     // 데이터 다양성이 무너지고 유사도가 전반적으로 낮게 깔린다. 노이즈를 섞는다.
     const waistInch = clampInt(
-      26 + (weightKg - 60) * 0.22 + normal(random, 0, 1.3),
-      26,
-      40,
+      g.waistBase + (weightKg - g.waistPivot) * 0.22 + normal(random, 0, 1.3),
+      g.waistRange[0],
+      g.waistRange[1],
     );
 
     // 선택 항목은 일부만 채운다 (실제 입력률을 흉내낸다)
     const thighCm =
       random() < 0.7
-        ? clampInt(normal(random, weightKg * 0.72, 3), 40, 75)
+        ? clampInt(normal(random, weightKg * g.thighFactor, 3), 30, 85)
         : undefined;
     const hipCm =
       random() < 0.6
-        ? clampInt(normal(random, weightKg * 1.28, 5), 75, 125)
+        ? clampInt(normal(random, weightKg * g.hipFactor, 5), 65, 135)
         : undefined;
     const inseamCm =
       random() < 0.5
-        ? clampInt(normal(random, heightCm * 0.45, 2), 60, 95)
+        ? clampInt(normal(random, heightCm * 0.45, 2), 55, 95)
         : undefined;
 
     const modelId = pick(random, modelIds) as ModelId;
@@ -138,6 +189,7 @@ export function generateSyntheticReviews(options: {
 
     const snapshot: ReviewSnapshot = {
       nickname: makeNickname(random),
+      gender,
       heightCm,
       weightKg,
       waistInch,

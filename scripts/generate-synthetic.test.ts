@@ -19,11 +19,33 @@ describe("generateSyntheticReviews", () => {
     expect(generateSyntheticReviews({ count: 50, seed: 7 })).toHaveLength(50);
   });
 
-  it("501과 517이 모두 들어간다", () => {
+  it("12개 모델이 모두 들어간다", () => {
     const models = new Set(
-      generateSyntheticReviews({ count: 100, seed: 7 }).map((r) => r.modelId),
+      generateSyntheticReviews({ count: 600, seed: 7 }).map((r) => r.modelId),
     );
-    expect(models).toEqual(new Set(["501", "517"]));
+    expect(models.size).toBe(12);
+  });
+
+  it("두 성별이 모두 들어간다", () => {
+    const genders = new Set(
+      generateSyntheticReviews({ count: 200, seed: 7 }).map(
+        (r) => r.snapshot.gender,
+      ),
+    );
+    expect(genders).toEqual(new Set(["male", "female"]));
+  });
+
+  it("성별에 따라 체형 분포가 갈린다", () => {
+    const reviews = generateSyntheticReviews({ count: 400, seed: 7 });
+    const avg = (g: string) => {
+      const xs = reviews
+        .filter((r) => r.snapshot.gender === g)
+        .map((r) => r.snapshot.heightCm);
+      return xs.reduce((a, b) => a + b, 0) / xs.length;
+    };
+
+    // 분포를 나눈 것이 실제로 의미가 있는지 확인한다
+    expect(avg("male")).toBeGreaterThan(avg("female") + 8);
   });
 
   it("모든 값이 DB CHECK 제약 범위 안이다", () => {
@@ -46,6 +68,7 @@ describe("generateSyntheticReviews", () => {
       expect(review.snapshot.heightCm).toBeGreaterThanOrEqual(120);
       expect(review.snapshot.heightCm).toBeLessThanOrEqual(220);
       expect(review.snapshot.weightKg).toBeGreaterThanOrEqual(30);
+      expect(["male", "female"]).toContain(review.snapshot.gender);
       expect(review.snapshot.weightKg).toBeLessThanOrEqual(200);
       expect(review.snapshot.waistInch).toBeGreaterThanOrEqual(22);
       expect(review.snapshot.waistInch).toBeLessThanOrEqual(46);
