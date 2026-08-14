@@ -9,6 +9,9 @@ export type BodyMeasurements = {
 
 export type MeasurementField = keyof BodyMeasurements;
 
+/** 체형 옵션(슬림/표준/발달)으로 채울 수 있는 항목. 필수 치수는 옵션이 없다. */
+export type EstimatableField = "thighCm" | "hipCm" | "inseamCm";
+
 export type SimilarityResult = {
   /** 0~100 */
   score: number;

@@ -3,6 +3,7 @@ import {
   MEASUREMENT_FIELDS,
   TOTAL_WEIGHT,
 } from "./config";
+import { ESTIMATED_CREDIT } from "./estimate";
 import type {
   BodyMeasurements,
   MeasurementField,
@@ -49,11 +50,17 @@ export function similarity(
 }
 
 /** 내가 입력한 항목이 얼마나 충분한지 (0~1). 추천의 신뢰도가 아니라 입력 충족도다. */
-export function profileConfidence(me: BodyMeasurements): number {
-  const used = MEASUREMENT_FIELDS.reduce(
-    (sum, field) =>
-      me[field] === undefined ? sum : sum + MEASUREMENT_CONFIG[field].weight,
-    0,
-  );
+export function profileConfidence(
+  me: BodyMeasurements,
+  /** 체형 옵션에서 추정해 채운 항목. 직접 잰 값보다 거칠어 절반만 인정한다. */
+  estimatedFields: readonly MeasurementField[] = [],
+): number {
+  const used = MEASUREMENT_FIELDS.reduce((sum, field) => {
+    if (me[field] === undefined) return sum;
+
+    const credit = estimatedFields.includes(field) ? ESTIMATED_CREDIT : 1;
+    return sum + MEASUREMENT_CONFIG[field].weight * credit;
+  }, 0);
+
   return used / TOTAL_WEIGHT;
 }

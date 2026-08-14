@@ -4,6 +4,13 @@ export {
   TOTAL_WEIGHT,
 } from "./config";
 export { profileConfidence, similarity } from "./similarity";
+export {
+  ESTIMATED_CREDIT,
+  estimateHipCm,
+  estimateInseamCm,
+  estimateThighCm,
+} from "./estimate";
+export type { EstimateInput, ShapeChoice } from "./estimate";
 export { MIN_SAME_GENDER, filterByGender } from "./gender";
 export type { GenderFilterResult } from "./gender";
 export { rankReviews } from "./ranking";
@@ -16,6 +23,7 @@ export {
 export type { FitIssue, SizeRecommendation } from "./recommendation";
 export type {
   BodyMeasurements,
+  EstimatableField,
   FitPart,
   FitReview,
   Gender,

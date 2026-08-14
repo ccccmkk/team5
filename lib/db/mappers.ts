@@ -1,4 +1,9 @@
-import type { FitReview, Gender, ReviewSnapshot } from "@/lib/fit-matching";
+import type {
+  EstimatableField,
+  FitReview,
+  Gender,
+  ReviewSnapshot,
+} from "@/lib/fit-matching";
 
 export type FitReviewRow = {
   id: string;
@@ -25,10 +30,18 @@ export type BodyProfileRow = {
   thigh_cm: number | null;
   hip_cm: number | null;
   inseam_cm: number | null;
+  estimated_fields: EstimatableField[];
 };
 
-/** 후기의 snapshot과 같은 모양이라 그대로 넘길 수 있다 */
-export type BodyProfile = ReviewSnapshot;
+/**
+ * 후기의 snapshot과 같은 모양이라 그대로 넘길 수 있다.
+ *
+ * `estimatedFields`는 체형 옵션에서 추정해 채운 항목이다. 후기 스냅샷에도 같이
+ * 실려, 나중에 "옵션으로 채운 사람의 후기"를 따로 볼 수 있다.
+ */
+export type BodyProfile = ReviewSnapshot & {
+  estimatedFields?: EstimatableField[];
+};
 
 export function toFitReview(row: FitReviewRow): FitReview {
   return {
@@ -57,6 +70,8 @@ export function toBodyProfile(row: BodyProfileRow): BodyProfile {
     thighCm: row.thigh_cm ?? undefined,
     hipCm: row.hip_cm ?? undefined,
     inseamCm: row.inseam_cm ?? undefined,
+    // 옛 행에는 컬럼이 없으므로 빈 배열로 읽는다
+    estimatedFields: row.estimated_fields ?? [],
   };
 }
 
@@ -74,5 +89,6 @@ export function toProfileRow(
     thigh_cm: profile.thighCm ?? null,
     hip_cm: profile.hipCm ?? null,
     inseam_cm: profile.inseamCm ?? null,
+    estimated_fields: profile.estimatedFields ?? [],
   };
 }
