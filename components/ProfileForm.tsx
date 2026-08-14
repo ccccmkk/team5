@@ -4,7 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { countOptionalFields, track } from "@/lib/analytics/track";
 import { getMyProfile, upsertMyProfile } from "@/lib/db/profile";
-import { profileConfidence } from "@/lib/fit-matching";
+import {
+  estimateHipCm,
+  estimateInseamCm,
+  estimateThighCm,
+  profileConfidence,
+  type EstimatableField,
+  type EstimateInput,
+  type Gender,
+  type ShapeChoice,
+} from "@/lib/fit-matching";
 import { bodyProfileSchema } from "@/lib/validation/schemas";
 
 const GENDERS = [
@@ -23,11 +32,36 @@ const MEASURE_FIELDS = [
   },
 ] as const;
 
+/**
+ * 선택 항목은 줄자가 있어야 답할 수 있어서 그냥 비워 두는 사람이 많았다
+ * (사용자 피드백, GA에서도 profile_start 대비 완료가 적었다).
+ * 그래서 각 항목에 "고르기"를 먼저 두고, 아는 사람만 직접 입력하게 한다.
+ */
 const OPTIONAL = [
-  { name: "thighCm", label: "허벅지 둘레", unit: "cm" },
-  { name: "hipCm", label: "엉덩이 둘레", unit: "cm" },
-  { name: "inseamCm", label: "인심(다리 안쪽 길이)", unit: "cm" },
+  {
+    name: "thighCm",
+    label: "허벅지 둘레",
+    unit: "cm",
+    estimate: estimateThighCm,
+    choices: ["슬림", "표준", "하체발달"],
+  },
+  {
+    name: "hipCm",
+    label: "엉덩이 둘레",
+    unit: "cm",
+    estimate: estimateHipCm,
+    choices: ["작은 편", "표준", "큰 편"],
+  },
+  {
+    name: "inseamCm",
+    label: "다리 길이",
+    unit: "cm",
+    estimate: estimateInseamCm,
+    choices: ["짧은 편", "표준", "긴 편"],
+  },
 ] as const;
+
+const CHOICES: ShapeChoice[] = [-1, 0, 1];
 
 function filled(value: string | undefined): boolean {
   return (value ?? "").trim() !== "";
@@ -57,6 +91,10 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
   const [failure, setFailure] = useState<string | null>(null);
   // 복원이 끝나기 전에 빈 값으로 초안을 덮어쓰지 않도록 막는다
   const [restored, setRestored] = useState(false);
+  /** 어떤 항목을 옵션으로 골랐는지. 값이 아니라 "고른 칸"을 기억한다. */
+  const [choices, setChoices] = useState<
+    Partial<Record<EstimatableField, ShapeChoice>>
+  >({});
 
   // H1(온보딩 완료율)의 분모
   useEffect(() => {
@@ -110,15 +148,62 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
     }
   }, [restored, values]);
 
+  /**
+   * 옵션에서 치수를 뽑으려면 성별·몸무게·키가 먼저 있어야 한다.
+   * 아직이면 버튼을 잠그고 무엇이 필요한지 알린다.
+   */
+  const basis: EstimateInput | null =
+    values.gender === "male" || values.gender === "female"
+      ? {
+          gender: values.gender as Gender,
+          weightKg: Number(values.weightKg),
+          heightCm: Number(values.heightCm),
+        }
+      : null;
+  const canEstimate =
+    basis !== null &&
+    Number.isFinite(basis.weightKg) &&
+    basis.weightKg > 0 &&
+    Number.isFinite(basis.heightCm) &&
+    basis.heightCm > 0;
+
+  /** 옵션으로 채운 항목. 직접 고쳐 쓰면 목록에서 빠진다. */
+  const estimatedFields = OPTIONAL.map((f) => f.name).filter(
+    (name) => filled(values[name]) && choices[name] !== undefined,
+  ) as EstimatableField[];
+
   // 검증 통과 여부와 무관하게 항상 맞는 값을 보여준다
-  const confidence = profileConfidence({
-    heightCm: 0,
-    weightKg: 0,
-    waistInch: 0,
-    ...(filled(values.thighCm) && { thighCm: 1 }),
-    ...(filled(values.hipCm) && { hipCm: 1 }),
-    ...(filled(values.inseamCm) && { inseamCm: 1 }),
-  });
+  const confidence = profileConfidence(
+    {
+      heightCm: 0,
+      weightKg: 0,
+      waistInch: 0,
+      ...(filled(values.thighCm) && { thighCm: 1 }),
+      ...(filled(values.hipCm) && { hipCm: 1 }),
+      ...(filled(values.inseamCm) && { inseamCm: 1 }),
+    },
+    estimatedFields,
+  );
+
+  function pickShape(
+    name: EstimatableField,
+    estimate: (input: EstimateInput, choice: ShapeChoice) => number,
+    choice: ShapeChoice,
+  ) {
+    if (!canEstimate || !basis) return;
+    setValues({ ...values, [name]: String(estimate(basis, choice)) });
+    setChoices({ ...choices, [name]: choice });
+  }
+
+  /** 숫자를 직접 고치면 더 이상 추정값이 아니다. */
+  function typeMeasure(name: string, raw: string) {
+    setValues({ ...values, [name]: raw });
+    if (name in choices) {
+      const next = { ...choices };
+      delete next[name as EstimatableField];
+      setChoices(next);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -138,7 +223,9 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
     setErrors({});
     setSaving(true);
     try {
-      await upsertMyProfile(result.data);
+      // 옵션으로 채운 항목을 함께 남긴다. 나중에 "고른 값"과 "직접 잰 값"을
+      // 구분해서 볼 수 있어야 화면의 정확도가 거짓말을 하지 않는다.
+      await upsertMyProfile({ ...result.data, estimatedFields });
       // 저장됐으니 초안은 더 필요 없다. 이제 DB가 출처다.
       try {
         window.localStorage.removeItem(DRAFT_KEY);
@@ -223,13 +310,68 @@ export function ProfileForm({ nextPath }: { nextPath: string }) {
         </p>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold">선택</h2>
-        {OPTIONAL.map((f) => field(f.name, f.label, f.unit))}
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold">선택</h2>
+          <p className="text-ink-muted mt-1 text-sm">
+            줄자로 재지 않아도 됩니다. 고르기만 해도 비슷한 체형을 찾는 데
+            쓰입니다.
+          </p>
+        </div>
+
+        {!canEstimate && (
+          <p className="text-ink-muted text-sm">
+            성별과 키·몸무게를 먼저 채우면 아래에서 고를 수 있습니다.
+          </p>
+        )}
+
+        {OPTIONAL.map((f) => (
+          <div key={f.name}>
+            <span className="text-ink-muted text-sm">{f.label}</span>
+
+            <div className="mt-1 flex gap-px">
+              {CHOICES.map((choice, index) => (
+                <button
+                  key={choice}
+                  type="button"
+                  disabled={!canEstimate}
+                  onClick={() => pickShape(f.name, f.estimate, choice)}
+                  className={`flex-1 rounded-sm border py-2 text-xs disabled:opacity-40 ${
+                    choices[f.name] === choice
+                      ? "bg-ink text-surface border-ink"
+                      : "border-line bg-surface"
+                  }`}
+                >
+                  {f.choices[index]}
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-2 flex items-center gap-2">
+              <span className="text-ink-muted shrink-0 text-xs">
+                직접 입력 ({f.unit})
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={values[f.name] ?? ""}
+                onChange={(e) => typeMeasure(f.name, e.target.value)}
+                className="border-line focus:border-ink w-full rounded-sm border px-3 py-2 font-mono tabular-nums outline-none"
+              />
+            </label>
+            {errors[f.name] && (
+              <span className="text-warn mt-1 block text-sm">
+                {errors[f.name]}
+              </span>
+            )}
+          </div>
+        ))}
+
         <p className="text-ink-muted text-sm">
           현재 정확도{" "}
           <span className="tnum font-mono">{Math.round(confidence * 100)}%</span>
-          {!filled(values.thighCm) && " · 허벅지 둘레를 넣으면 85%로 올라갑니다"}
+          {estimatedFields.length > 0 &&
+            " · 고른 값은 대략치라 절반만 반영됩니다"}
         </p>
       </section>
 

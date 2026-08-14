@@ -85,6 +85,7 @@ describe("toBodyProfile", () => {
       thigh_cm: null,
       hip_cm: null,
       inseam_cm: null,
+      estimated_fields: [],
     });
 
     expect(profile.gender).toBeUndefined();
@@ -101,6 +102,7 @@ describe("toBodyProfile", () => {
       thigh_cm: null,
       hip_cm: null,
       inseam_cm: null,
+      estimated_fields: [],
     });
 
     expect(profile).toEqual({
@@ -112,7 +114,25 @@ describe("toBodyProfile", () => {
       thighCm: undefined,
       hipCm: undefined,
       inseamCm: undefined,
+      estimatedFields: [],
     });
+  });
+
+  it("옵션으로 채운 항목을 그대로 읽는다", () => {
+    const profile = toBodyProfile({
+      user_id: "user-1",
+      nickname: "테스터",
+      gender: "male",
+      height_cm: 175,
+      weight_kg: 70,
+      waist_inch: 32,
+      thigh_cm: 50,
+      hip_cm: null,
+      inseam_cm: null,
+      estimated_fields: ["thighCm"],
+    });
+
+    expect(profile.estimatedFields).toEqual(["thighCm"]);
   });
 
   it("toProfileRow와 왕복해도 값이 보존된다", () => {
@@ -125,6 +145,7 @@ describe("toBodyProfile", () => {
       thighCm: 56,
       hipCm: 95,
       inseamCm: 78,
+      estimatedFields: ["hipCm" as const],
     };
 
     expect(toBodyProfile(toProfileRow("user-1", original))).toEqual(original);
